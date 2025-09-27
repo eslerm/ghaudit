@@ -35,6 +35,7 @@ func New(ghc *github.Client) *cobra.Command {
 		nonProviderPatterns(ghc, &org),
 		memberRepoCreation(ghc, &org),
 		twoFactor(ghc, &org),
+		externalCollaboratorInvite(ghc, &org),
 	)
 
 	return cmd
