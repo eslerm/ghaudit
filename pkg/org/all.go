@@ -183,12 +183,30 @@ func runRepoChecks(ctx context.Context, githubClient *github.Client, orgName, re
 		return gherror.WrapAPIError(err, "fetching repository data", orgName, repoName)
 	}
 
-	// Check default workflow permissions - still needs its own API call
-	if err := repo.DefaultPermissions(ctx, githubClient, orgName, repoName); err != nil {
-		if limitedAccess && gherror.Is403(err) {
-			return nil // Skip this check silently in limited access mode
+	// Check if Actions are enabled - only in 'all' mode as disabled Actions is secure
+	actionsEnabled := true // Assume enabled by default
+	if includeAll {
+		enabled, err := repo.IsActionsEnabled(ctx, githubClient, orgName, repoName)
+		if err != nil {
+			if limitedAccess && gherror.Is403(err) {
+				return nil // Skip this check silently in limited access mode
+			}
+			return fmt.Errorf("actions enabled check failed: %w", err)
 		}
-		return fmt.Errorf("default permissions check failed: %w", err)
+		actionsEnabled = enabled
+		if !enabled {
+			fmt.Printf("::info title=Actions disabled (secure)::Actions disabled in %s/%s reduces attack surface\n", orgName, repoName)
+		}
+	}
+
+	// Check default workflow permissions only if Actions are enabled
+	if actionsEnabled {
+		if err := repo.DefaultWorkflowPermissions(ctx, githubClient, orgName, repoName); err != nil {
+			if limitedAccess && gherror.Is403(err) {
+				return nil // Skip this check silently in limited access mode
+			}
+			return fmt.Errorf("default workflow permissions check failed: %w", err)
+		}
 	}
 
 	// Check deploy keys - still needs its own API call

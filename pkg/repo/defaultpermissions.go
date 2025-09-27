@@ -13,8 +13,8 @@ import (
 )
 
 var (
-	ErrDefaultPermissions  = gherror.New("Elevated default actions permissions")
-	ErrApprovePullRequests = gherror.New("Actions can approve PRs")
+	ErrDefaultWorkflowPermissions = gherror.New("Elevated default workflow permissions")
+	ErrApprovePullRequests        = gherror.New("Actions can approve PRs")
 )
 
 func defaultPermissions(githubClient *github.Client, org, repo *string) *cobra.Command {
@@ -24,15 +24,15 @@ func defaultPermissions(githubClient *github.Client, org, repo *string) *cobra.C
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return DefaultPermissions(cmd.Context(), githubClient, *org, *repo)
+			return DefaultWorkflowPermissions(cmd.Context(), githubClient, *org, *repo)
 		},
 	}
 }
 
-// DefaultPermissions checks if default workflow permissions are elevated
+// DefaultWorkflowPermissions checks if default workflow permissions are elevated
 // Note: Cannot accept pre-fetched repository data as this requires a completely different API endpoint
 // (GetDefaultWorkflowPermissions) that returns data not included in the standard Repository object
-func DefaultPermissions(ctx context.Context, githubClient *github.Client, org, repo string) error {
+func DefaultWorkflowPermissions(ctx context.Context, githubClient *github.Client, org, repo string) error {
 	var workflowPerms *github.DefaultWorkflowPermissionRepository
 
 	err := gherror.WithRetry(ctx, fmt.Sprintf("fetch workflow permissions for %s/%s", org, repo), func() error {
@@ -42,6 +42,9 @@ func DefaultPermissions(ctx context.Context, githubClient *github.Client, org, r
 	})
 	if err != nil {
 		// 404 means Actions are disabled for this repository - this is actually secure
+		// TODO: This 404 handling may become unnecessary once we always check Actions status first
+		// in all code paths (including standard mode and direct CLI calls). Consider removing
+		// this once the Actions check is consistently performed before workflow permissions.
 		if gherror.Is404(err) {
 			return nil // Actions disabled is not a security issue
 		}
@@ -50,7 +53,7 @@ func DefaultPermissions(ctx context.Context, githubClient *github.Client, org, r
 
 	// Check whether the default workflow permissions are write.
 	if workflowPerms.GetDefaultWorkflowPermissions() == "write" {
-		ErrDefaultPermissions.Emit("Elevated permissions in %s/%s", org, repo)
+		ErrDefaultWorkflowPermissions.Emit("Elevated permissions in %s/%s", org, repo)
 	}
 
 	// Check whether workflows can approve PRs.

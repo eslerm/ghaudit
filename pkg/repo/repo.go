@@ -25,6 +25,7 @@ func New(githubClient *github.Client) *cobra.Command {
 
 	// Add sub-commands.
 	cmd.AddCommand(
+		actionsEnabled(githubClient, &org, &repo),
 		deployKeys(githubClient, &org, &repo),
 		defaultPermissions(githubClient, &org, &repo),
 		vulnerabilityReporting(githubClient, &org, &repo),

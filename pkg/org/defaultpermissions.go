@@ -10,7 +10,7 @@ import (
 )
 
 func defaultPermissions(githubClient *github.Client, org *string) *cobra.Command {
-	rm := NewRepoMapper("default-permissions", githubClient, org, repo.DefaultPermissions)
+	rm := NewRepoMapper("default-permissions", githubClient, org, repo.DefaultWorkflowPermissions)
 
 	return &cobra.Command{
 		Use:           "default-permissions",
