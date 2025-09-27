@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/chainguard-dev/ghaudit/pkg/config"
 	"github.com/chainguard-dev/ghaudit/pkg/gherror"
 	"github.com/google/go-github/v75/github"
 	"github.com/spf13/cobra"
@@ -37,7 +38,9 @@ func ActionsEnabled(ctx context.Context, githubClient *github.Client, org, repo 
 	if err != nil {
 		// 404 means Actions are completely disabled for this repository
 		if gherror.Is404(err) {
-			fmt.Printf("::info title=Actions disabled (secure)::Actions disabled in %s/%s reduces attack surface\n", org, repo)
+			if !config.GetErrorsOnly(ctx) {
+				fmt.Printf("::info title=Actions disabled (secure)::Actions disabled in %s/%s reduces attack surface\n", org, repo)
+			}
 			return nil
 		}
 		return gherror.WrapAPIError(err, "fetching actions permissions", org, repo)
@@ -45,7 +48,9 @@ func ActionsEnabled(ctx context.Context, githubClient *github.Client, org, repo 
 
 	// Check if actions are enabled
 	if !actionsPerms.GetEnabled() {
-		fmt.Printf("::info title=Actions disabled (secure)::Actions disabled in %s/%s reduces attack surface\n", org, repo)
+		if !config.GetErrorsOnly(ctx) {
+			fmt.Printf("::info title=Actions disabled (secure)::Actions disabled in %s/%s reduces attack surface\n", org, repo)
+		}
 	}
 
 	return nil

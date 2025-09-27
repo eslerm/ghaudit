@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/chainguard-dev/ghaudit/pkg/config"
 	"github.com/chainguard-dev/ghaudit/pkg/gherror"
 	"github.com/chainguard-dev/ghaudit/pkg/repo"
 	"github.com/google/go-github/v75/github"
@@ -17,6 +18,7 @@ import (
 func all(githubClient *github.Client, org *string) *cobra.Command {
 	var includeArchived bool
 	var limitedAccess bool
+	var errorsOnly bool
 
 	cmd := &cobra.Command{
 		Use:           "all",
@@ -24,12 +26,13 @@ func all(githubClient *github.Client, org *string) *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runChecks(cmd.Context(), githubClient, *org, true, includeArchived, limitedAccess)
+			return runChecks(cmd.Context(), githubClient, *org, true, includeArchived, limitedAccess, errorsOnly)
 		},
 	}
 
 	cmd.Flags().BoolVar(&includeArchived, "include-archived", false, "Include archived repositories in audit")
 	cmd.Flags().BoolVar(&limitedAccess, "limited-access", false, "Skip repositories that return 403 errors (for limited access scenarios)")
+	cmd.Flags().BoolVar(&errorsOnly, "errors-only", false, "Show only errors, suppress informational messages")
 
 	return cmd
 }
@@ -37,6 +40,7 @@ func all(githubClient *github.Client, org *string) *cobra.Command {
 func standard(githubClient *github.Client, org *string) *cobra.Command {
 	var includeArchived bool
 	var limitedAccess bool
+	var errorsOnly bool
 
 	cmd := &cobra.Command{
 		Use:           "standard",
@@ -44,17 +48,21 @@ func standard(githubClient *github.Client, org *string) *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runChecks(cmd.Context(), githubClient, *org, false, includeArchived, limitedAccess)
+			return runChecks(cmd.Context(), githubClient, *org, false, includeArchived, limitedAccess, errorsOnly)
 		},
 	}
 
 	cmd.Flags().BoolVar(&includeArchived, "include-archived", false, "Include archived repositories in audit")
 	cmd.Flags().BoolVar(&limitedAccess, "limited-access", false, "Skip repositories that return 403 errors (for limited access scenarios)")
+	cmd.Flags().BoolVar(&errorsOnly, "errors-only", false, "Show only errors, suppress informational messages")
 
 	return cmd
 }
 
-func runChecks(ctx context.Context, githubClient *github.Client, orgName string, includeAll bool, includeArchived bool, limitedAccess bool) error {
+func runChecks(ctx context.Context, githubClient *github.Client, orgName string, includeAll bool, includeArchived bool, limitedAccess bool, errorsOnly bool) error {
+	// Add errorsOnly to context for downstream functions
+	ctx = config.WithErrorsOnly(ctx, errorsOnly)
+
 	// Fetch organization data once with retry
 	var org *github.Organization
 	err := gherror.WithRetry(ctx, "fetch organization "+orgName, func() error {
@@ -127,7 +135,7 @@ func runChecks(ctx context.Context, githubClient *github.Client, orgName string,
 				return
 			}
 
-			if err := runRepoChecks(ctx, githubClient, orgName, *repo.Name, includeAll, limitedAccess); err != nil {
+			if err := runRepoChecks(ctx, githubClient, orgName, *repo.Name, includeAll, limitedAccess, errorsOnly); err != nil {
 				// Send error and cancel all other operations
 				select {
 				case errChan <- fmt.Errorf("failed checking %s/%s: %w", orgName, *repo.Name, err):
@@ -173,7 +181,7 @@ func runOrgLevelChecks(ctx context.Context, org *github.Organization, orgName st
 	}
 }
 
-func runRepoChecks(ctx context.Context, githubClient *github.Client, orgName, repoName string, includeAll bool, limitedAccess bool) error {
+func runRepoChecks(ctx context.Context, githubClient *github.Client, orgName, repoName string, includeAll bool, limitedAccess bool, errorsOnly bool) error {
 	// Fetch all repo data in a single API call
 	repoData, _, err := githubClient.Repositories.Get(ctx, orgName, repoName)
 	if err != nil {
@@ -194,7 +202,7 @@ func runRepoChecks(ctx context.Context, githubClient *github.Client, orgName, re
 			return fmt.Errorf("actions enabled check failed: %w", err)
 		}
 		actionsEnabled = enabled
-		if !enabled {
+		if !enabled && !errorsOnly {
 			fmt.Printf("::info title=Actions disabled (secure)::Actions disabled in %s/%s reduces attack surface\n", orgName, repoName)
 		}
 	}

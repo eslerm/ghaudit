@@ -4,6 +4,7 @@
 package repo
 
 import (
+	"github.com/chainguard-dev/ghaudit/pkg/config"
 	"github.com/google/go-github/v75/github"
 	"github.com/spf13/cobra"
 )
@@ -20,8 +21,17 @@ func New(githubClient *github.Client) *cobra.Command {
 	}
 
 	var org, repo string
+	var errorsOnly bool
 	cmd.PersistentFlags().StringVarP(&org, "organization", "o", "", "organization to perform audits on.")
 	cmd.PersistentFlags().StringVarP(&repo, "repository", "r", "", "repository to perform audits on.")
+	cmd.PersistentFlags().BoolVar(&errorsOnly, "errors-only", false, "Show only errors, suppress informational messages")
+
+	// Add errorsOnly to context for all subcommands
+	cmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		ctx := config.WithErrorsOnly(cmd.Context(), errorsOnly)
+		cmd.SetContext(ctx)
+		return nil
+	}
 
 	// Add sub-commands.
 	cmd.AddCommand(
