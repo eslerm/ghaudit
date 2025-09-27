@@ -28,6 +28,7 @@ func New(ghc *github.Client) *cobra.Command {
 		deployKeys(ghc, &org, &repo),
 		defaultPermissions(ghc, &org, &repo),
 		vulnerabilityReporting(ghc, &org, &repo),
+		vulnerabilityAlerts(ghc, &org, &repo),
 	)
 
 	return cmd
