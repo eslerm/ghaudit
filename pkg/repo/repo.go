@@ -27,7 +27,6 @@ func New(ghc *github.Client) *cobra.Command {
 	cmd.AddCommand(
 		deployKeys(ghc, &org, &repo),
 		defaultPermissions(ghc, &org, &repo),
-		branchProtections(ghc, &org, &repo),
 	)
 
 	return cmd
