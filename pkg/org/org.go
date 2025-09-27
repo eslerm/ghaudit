@@ -32,6 +32,7 @@ func New(ghc *github.Client) *cobra.Command {
 		secretScanning(ghc, &org),
 		pushProtection(ghc, &org),
 		secretValidityChecks(ghc, &org),
+		nonProviderPatterns(ghc, &org),
 	)
 
 	return cmd
