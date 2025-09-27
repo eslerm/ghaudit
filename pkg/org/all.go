@@ -20,12 +20,24 @@ func all(ghc *github.Client, org *string) *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runAllChecks(cmd.Context(), ghc, *org)
+			return runChecks(cmd.Context(), ghc, *org, true)
 		},
 	}
 }
 
-func runAllChecks(ctx context.Context, ghc *github.Client, orgName string) error {
+func standard(ghc *github.Client, org *string) *cobra.Command {
+	return &cobra.Command{
+		Use:           "standard",
+		Short:         "Run standard organization security audits (excludes PVR, non-provider patterns, 2FA, external collaborators, commit signoff, and push protection)",
+		SilenceUsage:  true,
+		SilenceErrors: true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runChecks(cmd.Context(), ghc, *org, false)
+		},
+	}
+}
+
+func runChecks(ctx context.Context, ghc *github.Client, orgName string, includeAll bool) error {
 	// Fetch organization data once
 	org, _, err := ghc.Organizations.Get(ctx, orgName)
 	if err != nil {
@@ -33,7 +45,7 @@ func runAllChecks(ctx context.Context, ghc *github.Client, orgName string) error
 	}
 
 	// Run all org-level checks with the cached org data
-	runOrgLevelChecks(ctx, org, orgName)
+	runOrgLevelChecks(ctx, org, orgName, includeAll)
 
 	// Fetch repos once with pagination
 	var allRepos []*github.Repository
@@ -65,7 +77,7 @@ func runAllChecks(ctx context.Context, ghc *github.Client, orgName string) error
 			sem <- struct{}{}
 			defer func() { <-sem }()
 
-			runRepoChecks(ctx, ghc, orgName, *repo.Name)
+			runRepoChecks(ctx, ghc, orgName, *repo.Name, includeAll)
 		}()
 	}
 
@@ -73,9 +85,9 @@ func runAllChecks(ctx context.Context, ghc *github.Client, orgName string) error
 	return nil
 }
 
-func runOrgLevelChecks(ctx context.Context, org *github.Organization, orgName string) {
-	// Two-factor authentication check
-	if !org.GetTwoFactorRequirementEnabled() {
+func runOrgLevelChecks(ctx context.Context, org *github.Organization, orgName string, includeAll bool) {
+	// Two-factor authentication check (excluded in standard mode)
+	if includeAll && !org.GetTwoFactorRequirementEnabled() {
 		errTwoFactorDisabled.Emit("Two-factor authentication not required in %s", orgName)
 	}
 
@@ -84,8 +96,8 @@ func runOrgLevelChecks(ctx context.Context, org *github.Organization, orgName st
 		errMembersCanCreateRepos.Emit("Members can create repositories in %s (should require github-iac)", orgName)
 	}
 
-	// External collaborator invite check
-	if org.GetMembersCanInviteOutsideCollaborators() {
+	// External collaborator invite check (excluded in standard mode)
+	if includeAll && org.GetMembersCanInviteOutsideCollaborators() {
 		errExternalCollaboratorInvite.Emit("Members can invite outside collaborators in %s (should be disabled for production orgs)", orgName)
 	}
 
@@ -96,7 +108,7 @@ func runOrgLevelChecks(ctx context.Context, org *github.Organization, orgName st
 	}
 }
 
-func runRepoChecks(ctx context.Context, ghc *github.Client, orgName, repoName string) {
+func runRepoChecks(ctx context.Context, ghc *github.Client, orgName, repoName string, includeAll bool) {
 	// Fetch all repo data in a single API call
 	repository, _, err := ghc.Repositories.Get(ctx, orgName, repoName)
 	if err != nil {
@@ -124,14 +136,20 @@ func runRepoChecks(ctx context.Context, ghc *github.Client, orgName, repoName st
 		}
 	}
 
-	// Check vulnerability reporting - requires custom API call as field not in go-github v75
-	var pvr struct {
-		Enabled bool `json:"enabled"`
-	}
-	req, _ := ghc.NewRequest("GET", "repos/"+orgName+"/"+repoName+"/private-vulnerability-reporting", nil)
-	resp, _ := ghc.Do(ctx, req, &pvr)
-	if resp != nil && resp.StatusCode == 404 || !pvr.Enabled {
-		repo.ErrVulnerabilityReporting.Emit("Private vulnerability reporting disabled in %s/%s", orgName, repoName)
+	// Check vulnerability reporting - only for public repos and only in 'all' mode
+	// Private vulnerability reporting is only available for public repositories
+	if includeAll {
+		var pvr struct {
+			Enabled bool `json:"enabled"`
+		}
+		req, _ := ghc.NewRequest("GET", "repos/"+orgName+"/"+repoName+"/private-vulnerability-reporting", nil)
+		resp, _ := ghc.Do(ctx, req, &pvr)
+		if resp != nil && resp.StatusCode == 404 || !pvr.Enabled {
+			// Only report if it's a public repo (PVR is only for public repos)
+			if repository.GetPrivate() == false {
+				repo.ErrVulnerabilityReporting.Emit("Private vulnerability reporting disabled in %s/%s", orgName, repoName)
+			}
+		}
 	}
 
 	// Check vulnerability alerts (Dependabot)
@@ -141,8 +159,8 @@ func runRepoChecks(ctx context.Context, ghc *github.Client, orgName, repoName st
 		repo.ErrVulnerabilityAlerts.Emit("Vulnerability alerts (Dependabot security updates) disabled in %s/%s", orgName, repoName)
 	}
 
-	// Check commit signoff
-	if !repository.GetWebCommitSignoffRequired() {
+	// Check commit signoff (excluded in standard mode)
+	if includeAll && !repository.GetWebCommitSignoffRequired() {
 		repo.ErrCommitSignoff.Emit("Web commit signoff not required in %s/%s", orgName, repoName)
 	}
 
@@ -153,10 +171,10 @@ func runRepoChecks(ctx context.Context, ghc *github.Client, orgName, repoName st
 		repo.ErrSecretScanning.Emit("Secret scanning disabled in %s/%s", orgName, repoName)
 	}
 
-	// Check push protection
-	if repository.SecurityAndAnalysis == nil ||
+	// Check push protection (excluded in standard mode)
+	if includeAll && (repository.SecurityAndAnalysis == nil ||
 	   repository.SecurityAndAnalysis.SecretScanningPushProtection == nil ||
-	   repository.SecurityAndAnalysis.SecretScanningPushProtection.GetStatus() != "enabled" {
+	   repository.SecurityAndAnalysis.SecretScanningPushProtection.GetStatus() != "enabled") {
 		repo.ErrPushProtection.Emit("Secret scanning push protection disabled in %s/%s", orgName, repoName)
 	}
 
@@ -167,14 +185,16 @@ func runRepoChecks(ctx context.Context, ghc *github.Client, orgName, repoName st
 		repo.ErrSecretValidityChecks.Emit("Secret validity checks disabled in %s/%s", orgName, repoName)
 	}
 
-	// Non-provider patterns still requires custom API call
-	type NonProviderPatternsResponse struct {
-		Enabled bool `json:"secret_scanning_non_provider_patterns_enabled"`
-	}
-	var response NonProviderPatternsResponse
-	req, _ = ghc.NewRequest("GET", "repos/"+orgName+"/"+repoName, nil)
-	ghc.Do(ctx, req, &response)
-	if !response.Enabled {
-		repo.ErrNonProviderPatterns.Emit("Non-provider secret patterns disabled in %s/%s", orgName, repoName)
+	// Non-provider patterns still requires custom API call (excluded in standard mode)
+	if includeAll {
+		type NonProviderPatternsResponse struct {
+			Enabled bool `json:"secret_scanning_non_provider_patterns_enabled"`
+		}
+		var response NonProviderPatternsResponse
+		req, _ := ghc.NewRequest("GET", "repos/"+orgName+"/"+repoName, nil)
+		ghc.Do(ctx, req, &response)
+		if !response.Enabled {
+			repo.ErrNonProviderPatterns.Emit("Non-provider secret patterns disabled in %s/%s", orgName, repoName)
+		}
 	}
 }
