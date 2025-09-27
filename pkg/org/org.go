@@ -29,6 +29,7 @@ func New(ghc *github.Client) *cobra.Command {
 		vulnerabilityReporting(ghc, &org),
 		vulnerabilityAlerts(ghc, &org),
 		commitSignoff(ghc, &org),
+		secretScanning(ghc, &org),
 	)
 
 	return cmd
