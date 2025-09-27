@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/google/go-github/v75/github"
 )
@@ -78,6 +79,46 @@ func IsPermissionError(err error) bool {
 	if errors.As(err, &ghErr) && ghErr.Response != nil {
 		return ghErr.Response.StatusCode == http.StatusForbidden ||
 			ghErr.Response.StatusCode == http.StatusUnauthorized
+	}
+	return false
+}
+
+// Is403 checks if error is a 403 Forbidden error
+func Is403(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	// Check if the error contains a 403 status in the error message (for wrapped errors)
+	errStr := err.Error()
+	if strings.Contains(errStr, "status: 403") {
+		return true
+	}
+
+	// Check the actual GitHub error
+	var ghErr *github.ErrorResponse
+	if errors.As(err, &ghErr) && ghErr.Response != nil {
+		return ghErr.Response.StatusCode == http.StatusForbidden
+	}
+	return false
+}
+
+// Is404 checks if error is a 404 Not Found error
+func Is404(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	// Check if the error contains a 404 status in the error message (for wrapped errors)
+	errStr := err.Error()
+	if strings.Contains(errStr, "status: 404") {
+		return true
+	}
+
+	// Check the actual GitHub error
+	var ghErr *github.ErrorResponse
+	if errors.As(err, &ghErr) && ghErr.Response != nil {
+		return ghErr.Response.StatusCode == http.StatusNotFound
 	}
 	return false
 }

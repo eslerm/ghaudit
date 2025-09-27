@@ -5,6 +5,7 @@ package repo
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/chainguard-dev/ghaudit/pkg/gherror"
 	"github.com/google/go-github/v75/github"
@@ -32,8 +33,18 @@ func defaultPermissions(githubClient *github.Client, org, repo *string) *cobra.C
 // Note: Cannot accept pre-fetched repository data as this requires a completely different API endpoint
 // (GetDefaultWorkflowPermissions) that returns data not included in the standard Repository object
 func DefaultPermissions(ctx context.Context, githubClient *github.Client, org, repo string) error {
-	workflowPerms, _, err := githubClient.Repositories.GetDefaultWorkflowPermissions(ctx, org, repo)
+	var workflowPerms *github.DefaultWorkflowPermissionRepository
+
+	err := gherror.WithRetry(ctx, fmt.Sprintf("fetch workflow permissions for %s/%s", org, repo), func() error {
+		var err error
+		workflowPerms, _, err = githubClient.Repositories.GetDefaultWorkflowPermissions(ctx, org, repo)
+		return err
+	})
 	if err != nil {
+		// 404 means Actions are disabled for this repository - this is actually secure
+		if gherror.Is404(err) {
+			return nil // Actions disabled is not a security issue
+		}
 		return gherror.WrapAPIError(err, "fetching workflow permissions", org, repo)
 	}
 

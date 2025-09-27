@@ -37,11 +37,18 @@ func (rm *repoMapper) Execute(ctx context.Context) error {
 	page := 0
 
 	for {
-		repos, resp, err := rm.githubClient.Repositories.ListByOrg(ctx, *rm.org, &github.RepositoryListByOrgOptions{
-			ListOptions: github.ListOptions{
-				Page:    page,
-				PerPage: 100,
-			},
+		var repos []*github.Repository
+		var resp *github.Response
+
+		err := gherror.WithRetry(ctx, fmt.Sprintf("list %s repositories page %d", *rm.org, page), func() error {
+			var err error
+			repos, resp, err = rm.githubClient.Repositories.ListByOrg(ctx, *rm.org, &github.RepositoryListByOrgOptions{
+				ListOptions: github.ListOptions{
+					Page:    page,
+					PerPage: 100,
+				},
+			})
+			return err
 		})
 		if err != nil {
 			return gherror.WrapAPIError(err, "listing repositories", *rm.org, "")

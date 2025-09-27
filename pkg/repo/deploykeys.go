@@ -5,6 +5,7 @@ package repo
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/chainguard-dev/ghaudit/pkg/gherror"
 	"github.com/google/go-github/v75/github"
@@ -32,8 +33,18 @@ func deployKeys(githubClient *github.Client, org, repo *string) *cobra.Command {
 // Note: Cannot accept pre-fetched repository data as this requires a completely different API endpoint
 // (ListKeys) that returns data not included in the standard Repository object
 func DeployKeys(ctx context.Context, githubClient *github.Client, org, repo string) error {
-	keys, _, err := githubClient.Repositories.ListKeys(ctx, org, repo, &github.ListOptions{})
+	var keys []*github.Key
+
+	err := gherror.WithRetry(ctx, fmt.Sprintf("list deploy keys for %s/%s", org, repo), func() error {
+		var err error
+		keys, _, err = githubClient.Repositories.ListKeys(ctx, org, repo, &github.ListOptions{})
+		return err
+	})
 	if err != nil {
+		// 404 means we don't have admin access to view deploy keys for this repo
+		if gherror.Is404(err) {
+			return nil // Skip repos where we lack admin access
+		}
 		return gherror.WrapAPIError(err, "listing deploy keys", org, repo)
 	}
 

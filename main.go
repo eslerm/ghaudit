@@ -47,6 +47,7 @@ func main() {
 		}
 	}
 
+	// Create optimized GitHub client
 	githubClient := github.NewClient(
 		oauth2.NewClient(ctx,
 			oauth2.StaticTokenSource(&oauth2.Token{
@@ -54,6 +55,12 @@ func main() {
 			}),
 		),
 	)
+
+	// Pre-check rate limits before starting
+	if err := gherror.PreCheckRateLimit(ctx, githubClient); err != nil {
+		log.Printf("Warning: %v", err)
+		// Don't fatal here, let the command decide
+	}
 
 	cmd := New(githubClient)
 

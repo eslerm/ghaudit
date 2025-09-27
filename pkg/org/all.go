@@ -16,6 +16,7 @@ import (
 
 func all(githubClient *github.Client, org *string) *cobra.Command {
 	var includeArchived bool
+	var limitedAccess bool
 
 	cmd := &cobra.Command{
 		Use:           "all",
@@ -23,17 +24,19 @@ func all(githubClient *github.Client, org *string) *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runChecks(cmd.Context(), githubClient, *org, true, includeArchived)
+			return runChecks(cmd.Context(), githubClient, *org, true, includeArchived, limitedAccess)
 		},
 	}
 
 	cmd.Flags().BoolVar(&includeArchived, "include-archived", false, "Include archived repositories in audit")
+	cmd.Flags().BoolVar(&limitedAccess, "limited-access", false, "Skip repositories that return 403 errors (for limited access scenarios)")
 
 	return cmd
 }
 
 func standard(githubClient *github.Client, org *string) *cobra.Command {
 	var includeArchived bool
+	var limitedAccess bool
 
 	cmd := &cobra.Command{
 		Use:           "standard",
@@ -41,18 +44,24 @@ func standard(githubClient *github.Client, org *string) *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runChecks(cmd.Context(), githubClient, *org, false, includeArchived)
+			return runChecks(cmd.Context(), githubClient, *org, false, includeArchived, limitedAccess)
 		},
 	}
 
 	cmd.Flags().BoolVar(&includeArchived, "include-archived", false, "Include archived repositories in audit")
+	cmd.Flags().BoolVar(&limitedAccess, "limited-access", false, "Skip repositories that return 403 errors (for limited access scenarios)")
 
 	return cmd
 }
 
-func runChecks(ctx context.Context, githubClient *github.Client, orgName string, includeAll bool, includeArchived bool) error {
-	// Fetch organization data once
-	org, _, err := githubClient.Organizations.Get(ctx, orgName)
+func runChecks(ctx context.Context, githubClient *github.Client, orgName string, includeAll bool, includeArchived bool, limitedAccess bool) error {
+	// Fetch organization data once with retry
+	var org *github.Organization
+	err := gherror.WithRetry(ctx, "fetch organization "+orgName, func() error {
+		var err error
+		org, _, err = githubClient.Organizations.Get(ctx, orgName)
+		return err
+	})
 	if err != nil {
 		return gherror.WrapAPIError(err, "fetching organization data", orgName, "")
 	}
@@ -67,7 +76,14 @@ func runChecks(ctx context.Context, githubClient *github.Client, orgName string,
 	}
 
 	for {
-		repos, resp, err := githubClient.Repositories.ListByOrg(ctx, orgName, opts)
+		var repos []*github.Repository
+		var resp *github.Response
+
+		err := gherror.WithRetry(ctx, fmt.Sprintf("list repositories page %d", opts.Page), func() error {
+			var err error
+			repos, resp, err = githubClient.Repositories.ListByOrg(ctx, orgName, opts)
+			return err
+		})
 		if err != nil {
 			return gherror.WrapAPIError(err, "listing repositories", orgName, "")
 		}
@@ -111,7 +127,7 @@ func runChecks(ctx context.Context, githubClient *github.Client, orgName string,
 				return
 			}
 
-			if err := runRepoChecks(ctx, githubClient, orgName, *repo.Name, includeAll); err != nil {
+			if err := runRepoChecks(ctx, githubClient, orgName, *repo.Name, includeAll, limitedAccess); err != nil {
 				// Send error and cancel all other operations
 				select {
 				case errChan <- fmt.Errorf("failed checking %s/%s: %w", orgName, *repo.Name, err):
@@ -157,20 +173,29 @@ func runOrgLevelChecks(ctx context.Context, org *github.Organization, orgName st
 	}
 }
 
-func runRepoChecks(ctx context.Context, githubClient *github.Client, orgName, repoName string, includeAll bool) error {
+func runRepoChecks(ctx context.Context, githubClient *github.Client, orgName, repoName string, includeAll bool, limitedAccess bool) error {
 	// Fetch all repo data in a single API call
 	repoData, _, err := githubClient.Repositories.Get(ctx, orgName, repoName)
 	if err != nil {
+		if limitedAccess && gherror.Is403(err) {
+			return nil // Skip this repo silently in limited access mode
+		}
 		return gherror.WrapAPIError(err, "fetching repository data", orgName, repoName)
 	}
 
 	// Check default workflow permissions - still needs its own API call
 	if err := repo.DefaultPermissions(ctx, githubClient, orgName, repoName); err != nil {
+		if limitedAccess && gherror.Is403(err) {
+			return nil // Skip this check silently in limited access mode
+		}
 		return fmt.Errorf("default permissions check failed: %w", err)
 	}
 
 	// Check deploy keys - still needs its own API call
 	if err := repo.DeployKeys(ctx, githubClient, orgName, repoName); err != nil {
+		if limitedAccess && gherror.Is403(err) {
+			return nil // Skip this check silently in limited access mode
+		}
 		return fmt.Errorf("deploy keys check failed: %w", err)
 	}
 
@@ -178,42 +203,63 @@ func runRepoChecks(ctx context.Context, githubClient *github.Client, orgName, re
 	// Private vulnerability reporting is only available for public repositories
 	if includeAll && !repoData.GetPrivate() {
 		if err := repo.VulnerabilityReporting(ctx, githubClient, orgName, repoName, repoData); err != nil {
+			if limitedAccess && gherror.Is403(err) {
+				return nil // Skip this check silently in limited access mode
+			}
 			return fmt.Errorf("vulnerability reporting check failed: %w", err)
 		}
 	}
 
 	// Check vulnerability alerts (Dependabot) - pass pre-fetched repository data
 	if err := repo.VulnerabilityAlerts(ctx, githubClient, orgName, repoName, repoData); err != nil {
+		if limitedAccess && gherror.Is403(err) {
+			return nil // Skip this check silently in limited access mode
+		}
 		return fmt.Errorf("vulnerability alerts check failed: %w", err)
 	}
 
 	// Check commit signoff (excluded in standard mode) - pass pre-fetched repository data
 	if includeAll {
 		if err := repo.CommitSignoff(ctx, githubClient, orgName, repoName, repoData); err != nil {
+			if limitedAccess && gherror.Is403(err) {
+				return nil // Skip this check silently in limited access mode
+			}
 			return fmt.Errorf("commit signoff check failed: %w", err)
 		}
 	}
 
 	// Check secret scanning - pass pre-fetched repository data
 	if err := repo.SecretScanning(ctx, githubClient, orgName, repoName, repoData); err != nil {
+		if limitedAccess && gherror.Is403(err) {
+			return nil // Skip this check silently in limited access mode
+		}
 		return fmt.Errorf("secret scanning check failed: %w", err)
 	}
 
 	// Check push protection (excluded in standard mode) - pass pre-fetched repository data
 	if includeAll {
 		if err := repo.PushProtection(ctx, githubClient, orgName, repoName, repoData); err != nil {
+			if limitedAccess && gherror.Is403(err) {
+				return nil // Skip this check silently in limited access mode
+			}
 			return fmt.Errorf("push protection check failed: %w", err)
 		}
 	}
 
 	// Check validity checks - pass pre-fetched repository data
 	if err := repo.SecretValidityChecks(ctx, githubClient, orgName, repoName, repoData); err != nil {
+		if limitedAccess && gherror.Is403(err) {
+			return nil // Skip this check silently in limited access mode
+		}
 		return fmt.Errorf("secret validity checks failed: %w", err)
 	}
 
 	// Non-provider patterns (excluded in standard mode)
 	if includeAll {
 		if err := repo.NonProviderPatterns(ctx, githubClient, orgName, repoName); err != nil {
+			if limitedAccess && gherror.Is403(err) {
+				return nil // Skip this check silently in limited access mode
+			}
 			return fmt.Errorf("non-provider patterns check failed: %w", err)
 		}
 	}

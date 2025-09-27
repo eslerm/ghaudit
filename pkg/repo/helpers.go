@@ -5,6 +5,7 @@ package repo
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/chainguard-dev/ghaudit/pkg/gherror"
 	"github.com/google/go-github/v75/github"
@@ -15,7 +16,19 @@ func getRepository(ctx context.Context, githubClient *github.Client, orgName, re
 	if cachedRepoData != nil {
 		return cachedRepoData, nil
 	}
-	repository, _, err := githubClient.Repositories.Get(ctx, orgName, repoName)
+
+	var repository *github.Repository
+	operation := fmt.Sprintf("fetch repository %s/%s", orgName, repoName)
+
+	err := gherror.WithRetry(ctx, operation, func() error {
+		var err error
+		repository, _, err = githubClient.Repositories.Get(ctx, orgName, repoName)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+
 	if err != nil {
 		return nil, gherror.WrapAPIError(err, "fetching repository", orgName, repoName)
 	}
