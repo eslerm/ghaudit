@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var errPushProtection = gherror.New("Secret scanning push protection disabled")
+var ErrPushProtection = gherror.New("Secret scanning push protection disabled")
 
 func pushProtection(ghc *github.Client, org, repo *string) *cobra.Command {
 	return &cobra.Command{
@@ -40,11 +40,11 @@ func PushProtection(ctx context.Context, ghc *github.Client, org, repo string) e
 
 		status := repository.SecurityAndAnalysis.SecretScanningPushProtection.GetStatus()
 		if status != "enabled" {
-			errPushProtection.Emit("Secret scanning push protection disabled in %s/%s", org, repo)
+			ErrPushProtection.Emit("Secret scanning push protection disabled in %s/%s", org, repo)
 		}
 	} else {
 		// If the field is not present or null, it means the feature is not enabled
-		errPushProtection.Emit("Secret scanning push protection disabled in %s/%s", org, repo)
+		ErrPushProtection.Emit("Secret scanning push protection disabled in %s/%s", org, repo)
 	}
 
 	return nil

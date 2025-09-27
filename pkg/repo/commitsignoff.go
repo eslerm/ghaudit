@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var errCommitSignoff = gherror.New("Web commit signoff disabled")
+var ErrCommitSignoff = gherror.New("Web commit signoff disabled")
 
 func commitSignoff(ghc *github.Client, org, repo *string) *cobra.Command {
 	return &cobra.Command{
@@ -35,7 +35,7 @@ func CommitSignoff(ctx context.Context, ghc *github.Client, org, repo string) er
 	// Check if web commit signoff is required
 	// This ensures proper attribution and provides audit trail for code changes
 	if !repository.GetWebCommitSignoffRequired() {
-		errCommitSignoff.Emit("Web commit signoff not required in %s/%s", org, repo)
+		ErrCommitSignoff.Emit("Web commit signoff not required in %s/%s", org, repo)
 	}
 
 	return nil

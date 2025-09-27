@@ -11,7 +11,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var errDeployKeys = gherror.New("Found deploy keys")
+var (
+	ErrDeployKeys     = gherror.New("Found deploy keys")
+	ErrWriteDeployKey = gherror.New("Write deploy key")
+)
 
 func deployKeys(ghc *github.Client, org, repo *string) *cobra.Command {
 	return &cobra.Command{
@@ -34,7 +37,7 @@ func DeployKeys(ctx context.Context, ghc *github.Client, org, repo string) error
 	// Check whether there are any deploy keys.
 	// TODO(mattmoor): bump the severity if there are any non-readonly ones?
 	if len(keys) > 0 {
-		errDeployKeys.Emit("Deploy keys used in %s/%s", org, repo)
+		ErrDeployKeys.Emit("Deploy keys used in %s/%s", org, repo)
 	}
 	return nil
 }

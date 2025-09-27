@@ -12,7 +12,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var errNonProviderPatterns = gherror.New("Non-provider secret patterns disabled")
+var ErrNonProviderPatterns = gherror.New("Non-provider secret patterns disabled")
 
 func nonProviderPatterns(ghc *github.Client, org, repo *string) *cobra.Command {
 	return &cobra.Command{
@@ -52,7 +52,7 @@ func NonProviderPatterns(ctx context.Context, ghc *github.Client, org, repo stri
 
 	// Check if non-provider patterns are enabled
 	if result.SecurityAndAnalysis.SecretScanningNonProviderPatterns.Status != "enabled" {
-		errNonProviderPatterns.Emit("Non-provider secret patterns disabled in %s/%s", org, repo)
+		ErrNonProviderPatterns.Emit("Non-provider secret patterns disabled in %s/%s", org, repo)
 	}
 
 	return nil

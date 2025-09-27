@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var errSecretScanning = gherror.New("Secret scanning disabled")
+var ErrSecretScanning = gherror.New("Secret scanning disabled")
 
 func secretScanning(ghc *github.Client, org, repo *string) *cobra.Command {
 	return &cobra.Command{
@@ -40,11 +40,11 @@ func SecretScanning(ctx context.Context, ghc *github.Client, org, repo string) e
 
 		status := repository.SecurityAndAnalysis.SecretScanning.GetStatus()
 		if status != "enabled" {
-			errSecretScanning.Emit("Secret scanning disabled in %s/%s", org, repo)
+			ErrSecretScanning.Emit("Secret scanning disabled in %s/%s", org, repo)
 		}
 	} else {
 		// If the field is not present or null, it means the feature is not enabled
-		errSecretScanning.Emit("Secret scanning disabled in %s/%s", org, repo)
+		ErrSecretScanning.Emit("Secret scanning disabled in %s/%s", org, repo)
 	}
 
 	return nil

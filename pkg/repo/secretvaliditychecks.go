@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var errSecretValidityChecks = gherror.New("Secret validity checks disabled")
+var ErrSecretValidityChecks = gherror.New("Secret validity checks disabled")
 
 func secretValidityChecks(ghc *github.Client, org, repo *string) *cobra.Command {
 	return &cobra.Command{
@@ -40,11 +40,11 @@ func SecretValidityChecks(ctx context.Context, ghc *github.Client, org, repo str
 
 		status := repository.SecurityAndAnalysis.SecretScanningValidityChecks.GetStatus()
 		if status != "enabled" {
-			errSecretValidityChecks.Emit("Secret validity checks disabled in %s/%s", org, repo)
+			ErrSecretValidityChecks.Emit("Secret validity checks disabled in %s/%s", org, repo)
 		}
 	} else {
 		// If the field is not present or null, it means the feature is not enabled
-		errSecretValidityChecks.Emit("Secret validity checks disabled in %s/%s", org, repo)
+		ErrSecretValidityChecks.Emit("Secret validity checks disabled in %s/%s", org, repo)
 	}
 
 	return nil
