@@ -4,13 +4,18 @@
 package org
 
 import (
+	"context"
+
 	"github.com/chainguard-dev/ghaudit/pkg/repo"
 	"github.com/google/go-github/v75/github"
 	"github.com/spf13/cobra"
 )
 
 func secretValidityChecks(ghc *github.Client, org *string) *cobra.Command {
-	rm := NewRepoMapper("secret-validity-checks", ghc, org, repo.SecretValidityChecks)
+	wrapper := func(ctx context.Context, ghc *github.Client, org, repoName string) error {
+		return repo.SecretValidityChecks(ctx, ghc, org, repoName, nil)
+	}
+	rm := NewRepoMapper("secret-validity-checks", ghc, org, wrapper)
 
 	return &cobra.Command{
 		Use:           "secret-validity-checks",

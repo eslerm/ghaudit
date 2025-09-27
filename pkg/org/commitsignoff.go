@@ -4,13 +4,18 @@
 package org
 
 import (
+	"context"
+
 	"github.com/chainguard-dev/ghaudit/pkg/repo"
 	"github.com/google/go-github/v75/github"
 	"github.com/spf13/cobra"
 )
 
 func commitSignoff(ghc *github.Client, org *string) *cobra.Command {
-	rm := NewRepoMapper("commit-signoff", ghc, org, repo.CommitSignoff)
+	wrapper := func(ctx context.Context, ghc *github.Client, org, repoName string) error {
+		return repo.CommitSignoff(ctx, ghc, org, repoName, nil)
+	}
+	rm := NewRepoMapper("commit-signoff", ghc, org, wrapper)
 
 	return &cobra.Command{
 		Use:           "commit-signoff",

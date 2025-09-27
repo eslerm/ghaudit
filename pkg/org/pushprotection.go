@@ -4,13 +4,18 @@
 package org
 
 import (
+	"context"
+
 	"github.com/chainguard-dev/ghaudit/pkg/repo"
 	"github.com/google/go-github/v75/github"
 	"github.com/spf13/cobra"
 )
 
 func pushProtection(ghc *github.Client, org *string) *cobra.Command {
-	rm := NewRepoMapper("push-protection", ghc, org, repo.PushProtection)
+	wrapper := func(ctx context.Context, ghc *github.Client, org, repoName string) error {
+		return repo.PushProtection(ctx, ghc, org, repoName, nil)
+	}
+	rm := NewRepoMapper("push-protection", ghc, org, wrapper)
 
 	return &cobra.Command{
 		Use:           "push-protection",

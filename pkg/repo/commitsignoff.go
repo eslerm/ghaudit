@@ -20,16 +20,24 @@ func commitSignoff(ghc *github.Client, org, repo *string) *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return CommitSignoff(cmd.Context(), ghc, *org, *repo)
+			return CommitSignoff(cmd.Context(), ghc, *org, *repo, nil)
 		},
 	}
 }
 
-func CommitSignoff(ctx context.Context, ghc *github.Client, org, repo string) error {
-	// Get repository information to check commit signoff status
-	repository, _, err := ghc.Repositories.Get(ctx, org, repo)
-	if err != nil {
-		return err
+// CommitSignoff checks if web commit signoff is required
+// Pass repoData as nil to fetch it, or provide pre-fetched data to avoid API call
+func CommitSignoff(ctx context.Context, ghc *github.Client, org, repo string, repoData *github.Repository) error {
+	var repository *github.Repository
+	var err error
+
+	if repoData != nil {
+		repository = repoData
+	} else {
+		repository, _, err = ghc.Repositories.Get(ctx, org, repo)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Check if web commit signoff is required

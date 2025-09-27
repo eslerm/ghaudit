@@ -26,6 +26,8 @@ func nonProviderPatterns(ghc *github.Client, org, repo *string) *cobra.Command {
 	}
 }
 
+// NonProviderPatterns checks if custom secret patterns are enabled
+// Note: This always needs its own API call as the field is not available in go-github v75
 func NonProviderPatterns(ctx context.Context, ghc *github.Client, org, repo string) error {
 	// The non-provider patterns field is not yet available in go-github v75
 	// We need to make a direct API call to check this field
