@@ -34,6 +34,7 @@ func New(ghc *github.Client) *cobra.Command {
 		secretValidityChecks(ghc, &org),
 		nonProviderPatterns(ghc, &org),
 		memberRepoCreation(ghc, &org),
+		twoFactor(ghc, &org),
 	)
 
 	return cmd
