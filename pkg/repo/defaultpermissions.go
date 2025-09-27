@@ -29,7 +29,8 @@ func defaultPermissions(ghc *github.Client, org, repo *string) *cobra.Command {
 }
 
 // DefaultPermissions checks if default workflow permissions are elevated
-// Note: This always needs its own API call as workflow permissions are not included in Repository.Get()
+// Note: Cannot accept pre-fetched repository data as this requires a completely different API endpoint
+// (GetDefaultWorkflowPermissions) that returns data not included in the standard Repository object
 func DefaultPermissions(ctx context.Context, ghc *github.Client, org, repo string) error {
 	dwp, _, err := ghc.Repositories.GetDefaultWorkflowPermissions(ctx, org, repo)
 	if err != nil {

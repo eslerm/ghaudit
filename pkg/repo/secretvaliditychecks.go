@@ -27,33 +27,27 @@ func secretValidityChecks(ghc *github.Client, org, repo *string) *cobra.Command 
 
 // SecretValidityChecks checks if secret validity verification is enabled
 // Pass repoData as nil to fetch it, or provide pre-fetched data to avoid API call
-func SecretValidityChecks(ctx context.Context, ghc *github.Client, org, repo string, repoData *github.Repository) error {
-	var repository *github.Repository
-	var err error
-
-	if repoData != nil {
-		repository = repoData
-	} else {
-		repository, _, err = ghc.Repositories.Get(ctx, org, repo)
-		if err != nil {
-			return err
-		}
+func SecretValidityChecks(ctx context.Context, ghc *github.Client, orgName, repoName string, cachedRepoData *github.Repository) error {
+	repository, err := getRepository(ctx, ghc, orgName, repoName, cachedRepoData)
+	if err != nil {
+		return err
 	}
 
 	// Check if secret scanning validity checks are enabled
 	// This verifies with providers if detected secrets are active/valid
-	if repository.SecurityAndAnalysis != nil &&
-		repository.SecurityAndAnalysis.SecretScanningValidityChecks != nil &&
-		repository.SecurityAndAnalysis.SecretScanningValidityChecks.Status != nil {
-
-		status := repository.SecurityAndAnalysis.SecretScanningValidityChecks.GetStatus()
-		if status != "enabled" {
-			ErrSecretValidityChecks.Emit("Secret validity checks disabled in %s/%s", org, repo)
-		}
-	} else {
-		// If the field is not present or null, it means the feature is not enabled
-		ErrSecretValidityChecks.Emit("Secret validity checks disabled in %s/%s", org, repo)
-	}
+	checkSecurityFeature(
+		repository,
+		func(sa *github.SecurityAndAnalysis) string {
+			if sa.SecretScanningValidityChecks == nil {
+				return ""
+			}
+			return sa.SecretScanningValidityChecks.GetStatus()
+		},
+		ErrSecretValidityChecks,
+		orgName,
+		repoName,
+		"Secret validity checks",
+	)
 
 	return nil
 }

@@ -27,33 +27,27 @@ func secretScanning(ghc *github.Client, org, repo *string) *cobra.Command {
 
 // SecretScanning checks if secret scanning is enabled
 // Pass repoData as nil to fetch it, or provide pre-fetched data to avoid API call
-func SecretScanning(ctx context.Context, ghc *github.Client, org, repo string, repoData *github.Repository) error {
-	var repository *github.Repository
-	var err error
-
-	if repoData != nil {
-		repository = repoData
-	} else {
-		repository, _, err = ghc.Repositories.Get(ctx, org, repo)
-		if err != nil {
-			return err
-		}
+func SecretScanning(ctx context.Context, ghc *github.Client, orgName, repoName string, cachedRepoData *github.Repository) error {
+	repository, err := getRepository(ctx, ghc, orgName, repoName, cachedRepoData)
+	if err != nil {
+		return err
 	}
 
 	// Check if secret scanning is enabled
 	// This detects secrets that are already in the repository
-	if repository.SecurityAndAnalysis != nil &&
-		repository.SecurityAndAnalysis.SecretScanning != nil &&
-		repository.SecurityAndAnalysis.SecretScanning.Status != nil {
-
-		status := repository.SecurityAndAnalysis.SecretScanning.GetStatus()
-		if status != "enabled" {
-			ErrSecretScanning.Emit("Secret scanning disabled in %s/%s", org, repo)
-		}
-	} else {
-		// If the field is not present or null, it means the feature is not enabled
-		ErrSecretScanning.Emit("Secret scanning disabled in %s/%s", org, repo)
-	}
+	checkSecurityFeature(
+		repository,
+		func(sa *github.SecurityAndAnalysis) string {
+			if sa.SecretScanning == nil {
+				return ""
+			}
+			return sa.SecretScanning.GetStatus()
+		},
+		ErrSecretScanning,
+		orgName,
+		repoName,
+		"Secret scanning",
+	)
 
 	return nil
 }

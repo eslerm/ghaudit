@@ -110,7 +110,7 @@ func runOrgLevelChecks(ctx context.Context, org *github.Organization, orgName st
 
 func runRepoChecks(ctx context.Context, ghc *github.Client, orgName, repoName string, includeAll bool) {
 	// Fetch all repo data in a single API call
-	repository, _, err := ghc.Repositories.Get(ctx, orgName, repoName)
+	repoData, _, err := ghc.Repositories.Get(ctx, orgName, repoName)
 	if err != nil {
 		return
 	}
@@ -123,28 +123,28 @@ func runRepoChecks(ctx context.Context, ghc *github.Client, orgName, repoName st
 
 	// Check vulnerability reporting - only for public repos and only in 'all' mode
 	// Private vulnerability reporting is only available for public repositories
-	if includeAll && !repository.GetPrivate() {
-		_ = repo.VulnerabilityReporting(ctx, ghc, orgName, repoName)
+	if includeAll && !repoData.GetPrivate() {
+		_ = repo.VulnerabilityReporting(ctx, ghc, orgName, repoName, repoData)
 	}
 
 	// Check vulnerability alerts (Dependabot) - pass pre-fetched repository data
-	_ = repo.VulnerabilityAlerts(ctx, ghc, orgName, repoName, repository)
+	_ = repo.VulnerabilityAlerts(ctx, ghc, orgName, repoName, repoData)
 
 	// Check commit signoff (excluded in standard mode) - pass pre-fetched repository data
 	if includeAll {
-		_ = repo.CommitSignoff(ctx, ghc, orgName, repoName, repository)
+		_ = repo.CommitSignoff(ctx, ghc, orgName, repoName, repoData)
 	}
 
 	// Check secret scanning - pass pre-fetched repository data
-	_ = repo.SecretScanning(ctx, ghc, orgName, repoName, repository)
+	_ = repo.SecretScanning(ctx, ghc, orgName, repoName, repoData)
 
 	// Check push protection (excluded in standard mode) - pass pre-fetched repository data
 	if includeAll {
-		_ = repo.PushProtection(ctx, ghc, orgName, repoName, repository)
+		_ = repo.PushProtection(ctx, ghc, orgName, repoName, repoData)
 	}
 
 	// Check validity checks - pass pre-fetched repository data
-	_ = repo.SecretValidityChecks(ctx, ghc, orgName, repoName, repository)
+	_ = repo.SecretValidityChecks(ctx, ghc, orgName, repoName, repoData)
 
 	// Non-provider patterns (excluded in standard mode)
 	if includeAll {

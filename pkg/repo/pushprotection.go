@@ -27,33 +27,27 @@ func pushProtection(ghc *github.Client, org, repo *string) *cobra.Command {
 
 // PushProtection checks if secret scanning push protection is enabled
 // Pass repoData as nil to fetch it, or provide pre-fetched data to avoid API call
-func PushProtection(ctx context.Context, ghc *github.Client, org, repo string, repoData *github.Repository) error {
-	var repository *github.Repository
-	var err error
-
-	if repoData != nil {
-		repository = repoData
-	} else {
-		repository, _, err = ghc.Repositories.Get(ctx, org, repo)
-		if err != nil {
-			return err
-		}
+func PushProtection(ctx context.Context, ghc *github.Client, orgName, repoName string, cachedRepoData *github.Repository) error {
+	repository, err := getRepository(ctx, ghc, orgName, repoName, cachedRepoData)
+	if err != nil {
+		return err
 	}
 
 	// Check if secret scanning push protection is enabled
 	// This prevents commits containing secrets from being pushed
-	if repository.SecurityAndAnalysis != nil &&
-		repository.SecurityAndAnalysis.SecretScanningPushProtection != nil &&
-		repository.SecurityAndAnalysis.SecretScanningPushProtection.Status != nil {
-
-		status := repository.SecurityAndAnalysis.SecretScanningPushProtection.GetStatus()
-		if status != "enabled" {
-			ErrPushProtection.Emit("Secret scanning push protection disabled in %s/%s", org, repo)
-		}
-	} else {
-		// If the field is not present or null, it means the feature is not enabled
-		ErrPushProtection.Emit("Secret scanning push protection disabled in %s/%s", org, repo)
-	}
+	checkSecurityFeature(
+		repository,
+		func(sa *github.SecurityAndAnalysis) string {
+			if sa.SecretScanningPushProtection == nil {
+				return ""
+			}
+			return sa.SecretScanningPushProtection.GetStatus()
+		},
+		ErrPushProtection,
+		orgName,
+		repoName,
+		"Secret scanning push protection",
+	)
 
 	return nil
 }

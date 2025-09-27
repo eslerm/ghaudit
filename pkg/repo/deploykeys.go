@@ -29,7 +29,8 @@ func deployKeys(ghc *github.Client, org, repo *string) *cobra.Command {
 }
 
 // DeployKeys checks if deploy keys are used in the repository
-// Note: This always needs its own API call as deploy keys are not included in Repository.Get()
+// Note: Cannot accept pre-fetched repository data as this requires a completely different API endpoint
+// (ListKeys) that returns data not included in the standard Repository object
 func DeployKeys(ctx context.Context, ghc *github.Client, org, repo string) error {
 	keys, _, err := ghc.Repositories.ListKeys(ctx, org, repo, &github.ListOptions{})
 	if err != nil {
