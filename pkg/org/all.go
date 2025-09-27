@@ -14,30 +14,42 @@ import (
 )
 
 func all(ghc *github.Client, org *string) *cobra.Command {
-	return &cobra.Command{
+	var includeArchived bool
+
+	cmd := &cobra.Command{
 		Use:           "all",
 		Short:         "Run all organization security audits",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runChecks(cmd.Context(), ghc, *org, true)
+			return runChecks(cmd.Context(), ghc, *org, true, includeArchived)
 		},
 	}
+
+	cmd.Flags().BoolVar(&includeArchived, "include-archived", false, "Include archived repositories in audit")
+
+	return cmd
 }
 
 func standard(ghc *github.Client, org *string) *cobra.Command {
-	return &cobra.Command{
+	var includeArchived bool
+
+	cmd := &cobra.Command{
 		Use:           "standard",
 		Short:         "Run standard organization security audits (excludes PVR, non-provider patterns, 2FA, external collaborators, commit signoff, and push protection)",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runChecks(cmd.Context(), ghc, *org, false)
+			return runChecks(cmd.Context(), ghc, *org, false, includeArchived)
 		},
 	}
+
+	cmd.Flags().BoolVar(&includeArchived, "include-archived", false, "Include archived repositories in audit")
+
+	return cmd
 }
 
-func runChecks(ctx context.Context, ghc *github.Client, orgName string, includeAll bool) error {
+func runChecks(ctx context.Context, ghc *github.Client, orgName string, includeAll bool, includeArchived bool) error {
 	// Fetch organization data once
 	org, _, err := ghc.Organizations.Get(ctx, orgName)
 	if err != nil {
@@ -71,6 +83,12 @@ func runChecks(ctx context.Context, ghc *github.Client, orgName string, includeA
 
 	for _, r := range allRepos {
 		repo := r
+
+		// Skip archived repositories unless explicitly included
+		if !includeArchived && repo.GetArchived() {
+			continue
+		}
+
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
