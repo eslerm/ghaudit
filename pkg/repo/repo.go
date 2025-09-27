@@ -29,6 +29,7 @@ func New(ghc *github.Client) *cobra.Command {
 		defaultPermissions(ghc, &org, &repo),
 		vulnerabilityReporting(ghc, &org, &repo),
 		vulnerabilityAlerts(ghc, &org, &repo),
+		commitSignoff(ghc, &org, &repo),
 	)
 
 	return cmd
