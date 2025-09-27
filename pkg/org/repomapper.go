@@ -7,7 +7,6 @@ import (
 	"context"
 
 	"github.com/google/go-github/v75/github"
-	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 type RepoMapper interface {
@@ -48,11 +47,6 @@ func (rm *repoMapper) Execute(ctx context.Context) error {
 		for _, r := range repos {
 			// Skip archived repositories.
 			if r.GetArchived() {
-				continue
-			}
-			// Skip repositories with the "no-ghaudit" topic.
-			topics := sets.New[string](r.Topics...)
-			if topics.Has("no-ghaudit") || topics.Has("no-ghaudit-"+rm.name) {
 				continue
 			}
 
