@@ -13,23 +13,23 @@ import (
 
 var errExternalCollaboratorInvite = gherror.New("Members can invite external collaborators")
 
-func externalCollaboratorInvite(ghc *github.Client, org *string) *cobra.Command {
+func externalCollaboratorInvite(githubClient *github.Client, org *string) *cobra.Command {
 	return &cobra.Command{
 		Use:           "external-collaborator-invite",
 		Short:         "Audit if members can invite outside collaborators.",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return ExternalCollaboratorInvite(cmd.Context(), ghc, *org)
+			return ExternalCollaboratorInvite(cmd.Context(), githubClient, *org)
 		},
 	}
 }
 
-func ExternalCollaboratorInvite(ctx context.Context, ghc *github.Client, org string) error {
+func ExternalCollaboratorInvite(ctx context.Context, githubClient *github.Client, org string) error {
 	// Get organization information
-	organization, _, err := ghc.Organizations.Get(ctx, org)
+	organization, _, err := githubClient.Organizations.Get(ctx, org)
 	if err != nil {
-		return err
+		return gherror.WrapAPIError(err, "fetching organization settings", org, "")
 	}
 
 	// Check if members can invite outside collaborators

@@ -16,7 +16,7 @@ import (
 	"golang.org/x/oauth2"
 )
 
-func New(ghc *github.Client) *cobra.Command {
+func New(githubClient *github.Client) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:           "ghaudit",
 		Short:         "GitHub Audit",
@@ -29,8 +29,8 @@ func New(ghc *github.Client) *cobra.Command {
 
 	// Add sub-commands.
 	cmd.AddCommand(
-		org.New(ghc),
-		repo.New(ghc),
+		org.New(githubClient),
+		repo.New(githubClient),
 	)
 
 	return cmd
@@ -39,23 +39,23 @@ func New(ghc *github.Client) *cobra.Command {
 func main() {
 	ctx := context.Background()
 
-	tok, ok := os.LookupEnv("GITHUB_TOKEN")
+	token, ok := os.LookupEnv("GITHUB_TOKEN")
 	if !ok {
-		tok, ok = os.LookupEnv("GH_TOKEN")
+		token, ok = os.LookupEnv("GH_TOKEN")
 		if !ok {
 			log.Fatal("GITHUB_TOKEN or GH_TOKEN must be set")
 		}
 	}
 
-	ghc := github.NewClient(
+	githubClient := github.NewClient(
 		oauth2.NewClient(ctx,
 			oauth2.StaticTokenSource(&oauth2.Token{
-				AccessToken: tok,
+				AccessToken: token,
 			}),
 		),
 	)
 
-	cmd := New(ghc)
+	cmd := New(githubClient)
 
 	if err := cmd.ExecuteContext(ctx); err != nil {
 		log.Fatal(err)

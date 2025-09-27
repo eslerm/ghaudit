@@ -11,12 +11,15 @@ import (
 )
 
 // getRepository returns a cached repository or fetches it if not cached
-func getRepository(ctx context.Context, ghc *github.Client, orgName, repoName string, cachedRepoData *github.Repository) (*github.Repository, error) {
+func getRepository(ctx context.Context, githubClient *github.Client, orgName, repoName string, cachedRepoData *github.Repository) (*github.Repository, error) {
 	if cachedRepoData != nil {
 		return cachedRepoData, nil
 	}
-	repository, _, err := ghc.Repositories.Get(ctx, orgName, repoName)
-	return repository, err
+	repository, _, err := githubClient.Repositories.Get(ctx, orgName, repoName)
+	if err != nil {
+		return nil, gherror.WrapAPIError(err, "fetching repository", orgName, repoName)
+	}
+	return repository, nil
 }
 
 // checkSecurityFeature checks if a security feature is enabled in SecurityAndAnalysis

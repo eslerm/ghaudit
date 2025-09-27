@@ -11,11 +11,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func secretValidityChecks(ghc *github.Client, org *string) *cobra.Command {
-	wrapper := func(ctx context.Context, ghc *github.Client, org, repoName string) error {
-		return repo.SecretValidityChecks(ctx, ghc, org, repoName, nil)
+func secretValidityChecks(githubClient *github.Client, org *string) *cobra.Command {
+	wrapper := func(ctx context.Context, githubClient *github.Client, org, repoName string) error {
+		return repo.SecretValidityChecks(ctx, githubClient, org, repoName, nil)
 	}
-	rm := NewRepoMapper("secret-validity-checks", ghc, org, wrapper)
+	rm := NewRepoMapper("secret-validity-checks", githubClient, org, wrapper)
 
 	return &cobra.Command{
 		Use:           "secret-validity-checks",

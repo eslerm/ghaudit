@@ -13,23 +13,23 @@ import (
 
 var errTwoFactorDisabled = gherror.New("Two-factor authentication not required")
 
-func twoFactor(ghc *github.Client, org *string) *cobra.Command {
+func twoFactor(githubClient *github.Client, org *string) *cobra.Command {
 	return &cobra.Command{
 		Use:           "two-factor",
 		Short:         "Audit two-factor authentication requirement.",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return TwoFactor(cmd.Context(), ghc, *org)
+			return TwoFactor(cmd.Context(), githubClient, *org)
 		},
 	}
 }
 
-func TwoFactor(ctx context.Context, ghc *github.Client, org string) error {
+func TwoFactor(ctx context.Context, githubClient *github.Client, org string) error {
 	// Get organization information
-	organization, _, err := ghc.Organizations.Get(ctx, org)
+	organization, _, err := githubClient.Organizations.Get(ctx, org)
 	if err != nil {
-		return err
+		return gherror.WrapAPIError(err, "fetching organization settings", org, "")
 	}
 
 	// Check if two-factor authentication is required

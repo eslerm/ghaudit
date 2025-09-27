@@ -9,8 +9,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func defaultPermissions(ghc *github.Client, org *string) *cobra.Command {
-	rm := NewRepoMapper("default-permissions", ghc, org, repo.DefaultPermissions)
+func defaultPermissions(githubClient *github.Client, org *string) *cobra.Command {
+	rm := NewRepoMapper("default-permissions", githubClient, org, repo.DefaultPermissions)
 
 	return &cobra.Command{
 		Use:           "default-permissions",

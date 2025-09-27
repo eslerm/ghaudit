@@ -11,12 +11,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func secretScanning(ghc *github.Client, org *string) *cobra.Command {
+func secretScanning(githubClient *github.Client, org *string) *cobra.Command {
 	// Wrapper to match RepoFunc signature
-	wrapper := func(ctx context.Context, ghc *github.Client, org, repoName string) error {
-		return repo.SecretScanning(ctx, ghc, org, repoName, nil)
+	wrapper := func(ctx context.Context, githubClient *github.Client, org, repoName string) error {
+		return repo.SecretScanning(ctx, githubClient, org, repoName, nil)
 	}
-	rm := NewRepoMapper("secret-scanning", ghc, org, wrapper)
+	rm := NewRepoMapper("secret-scanning", githubClient, org, wrapper)
 
 	return &cobra.Command{
 		Use:           "secret-scanning",

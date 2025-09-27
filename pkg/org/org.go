@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func New(ghc *github.Client) *cobra.Command {
+func New(githubClient *github.Client) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:           "org",
 		Short:         "Commands to audit github organizations.",
@@ -24,20 +24,20 @@ func New(ghc *github.Client) *cobra.Command {
 
 	// Add sub-commands.
 	cmd.AddCommand(
-		all(ghc, &org),
-		standard(ghc, &org),
-		deployKeys(ghc, &org),
-		defaultPermissions(ghc, &org),
-		vulnerabilityReporting(ghc, &org),
-		vulnerabilityAlerts(ghc, &org),
-		commitSignoff(ghc, &org),
-		secretScanning(ghc, &org),
-		pushProtection(ghc, &org),
-		secretValidityChecks(ghc, &org),
-		nonProviderPatterns(ghc, &org),
-		memberRepoCreation(ghc, &org),
-		twoFactor(ghc, &org),
-		externalCollaboratorInvite(ghc, &org),
+		all(githubClient, &org),
+		standard(githubClient, &org),
+		deployKeys(githubClient, &org),
+		defaultPermissions(githubClient, &org),
+		vulnerabilityReporting(githubClient, &org),
+		vulnerabilityAlerts(githubClient, &org),
+		commitSignoff(githubClient, &org),
+		secretScanning(githubClient, &org),
+		pushProtection(githubClient, &org),
+		secretValidityChecks(githubClient, &org),
+		nonProviderPatterns(githubClient, &org),
+		memberRepoCreation(githubClient, &org),
+		twoFactor(githubClient, &org),
+		externalCollaboratorInvite(githubClient, &org),
 	)
 
 	return cmd

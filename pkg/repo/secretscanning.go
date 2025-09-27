@@ -13,22 +13,22 @@ import (
 
 var ErrSecretScanning = gherror.New("Secret scanning disabled")
 
-func secretScanning(ghc *github.Client, org, repo *string) *cobra.Command {
+func secretScanning(githubClient *github.Client, org, repo *string) *cobra.Command {
 	return &cobra.Command{
 		Use:           "secret-scanning",
 		Short:         "Audit secret scanning settings.",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return SecretScanning(cmd.Context(), ghc, *org, *repo, nil)
+			return SecretScanning(cmd.Context(), githubClient, *org, *repo, nil)
 		},
 	}
 }
 
 // SecretScanning checks if secret scanning is enabled
 // Pass repoData as nil to fetch it, or provide pre-fetched data to avoid API call
-func SecretScanning(ctx context.Context, ghc *github.Client, orgName, repoName string, cachedRepoData *github.Repository) error {
-	repository, err := getRepository(ctx, ghc, orgName, repoName, cachedRepoData)
+func SecretScanning(ctx context.Context, githubClient *github.Client, orgName, repoName string, cachedRepoData *github.Repository) error {
+	repository, err := getRepository(ctx, githubClient, orgName, repoName, cachedRepoData)
 	if err != nil {
 		return err
 	}

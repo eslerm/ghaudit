@@ -5,6 +5,7 @@ package org
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/chainguard-dev/ghaudit/pkg/gherror"
@@ -13,7 +14,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func all(ghc *github.Client, org *string) *cobra.Command {
+func all(githubClient *github.Client, org *string) *cobra.Command {
 	var includeArchived bool
 
 	cmd := &cobra.Command{
@@ -22,7 +23,7 @@ func all(ghc *github.Client, org *string) *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runChecks(cmd.Context(), ghc, *org, true, includeArchived)
+			return runChecks(cmd.Context(), githubClient, *org, true, includeArchived)
 		},
 	}
 
@@ -31,7 +32,7 @@ func all(ghc *github.Client, org *string) *cobra.Command {
 	return cmd
 }
 
-func standard(ghc *github.Client, org *string) *cobra.Command {
+func standard(githubClient *github.Client, org *string) *cobra.Command {
 	var includeArchived bool
 
 	cmd := &cobra.Command{
@@ -40,7 +41,7 @@ func standard(ghc *github.Client, org *string) *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runChecks(cmd.Context(), ghc, *org, false, includeArchived)
+			return runChecks(cmd.Context(), githubClient, *org, false, includeArchived)
 		},
 	}
 
@@ -49,11 +50,11 @@ func standard(ghc *github.Client, org *string) *cobra.Command {
 	return cmd
 }
 
-func runChecks(ctx context.Context, ghc *github.Client, orgName string, includeAll bool, includeArchived bool) error {
+func runChecks(ctx context.Context, githubClient *github.Client, orgName string, includeAll bool, includeArchived bool) error {
 	// Fetch organization data once
-	org, _, err := ghc.Organizations.Get(ctx, orgName)
+	org, _, err := githubClient.Organizations.Get(ctx, orgName)
 	if err != nil {
-		return err
+		return gherror.WrapAPIError(err, "fetching organization data", orgName, "")
 	}
 
 	// Run all org-level checks with the cached org data
@@ -66,9 +67,9 @@ func runChecks(ctx context.Context, ghc *github.Client, orgName string, includeA
 	}
 
 	for {
-		repos, resp, err := ghc.Repositories.ListByOrg(ctx, orgName, opts)
+		repos, resp, err := githubClient.Repositories.ListByOrg(ctx, orgName, opts)
 		if err != nil {
-			return err
+			return gherror.WrapAPIError(err, "listing repositories", orgName, "")
 		}
 		allRepos = append(allRepos, repos...)
 		if resp.NextPage == 0 {
@@ -77,12 +78,16 @@ func runChecks(ctx context.Context, ghc *github.Client, orgName string, includeA
 		opts.Page = resp.NextPage
 	}
 
-	// Run repo-level checks in parallel
+	// Run repo-level checks in parallel with context cancellation on first error
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	var wg sync.WaitGroup
 	sem := make(chan struct{}, 10) // Limit concurrent API calls
+	errChan := make(chan error, 1) // Buffer of 1 to avoid goroutine leak
 
-	for _, r := range allRepos {
-		repo := r
+	for _, repository := range allRepos {
+		repo := repository
 
 		// Skip archived repositories unless explicitly included
 		if !includeArchived && repo.GetArchived() {
@@ -92,15 +97,41 @@ func runChecks(ctx context.Context, ghc *github.Client, orgName string, includeA
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			sem <- struct{}{}
-			defer func() { <-sem }()
 
-			runRepoChecks(ctx, ghc, orgName, *repo.Name, includeAll)
+			// Check if context is cancelled before acquiring semaphore
+			select {
+			case <-ctx.Done():
+				return
+			case sem <- struct{}{}:
+				defer func() { <-sem }()
+			}
+
+			// Check context again before executing
+			if ctx.Err() != nil {
+				return
+			}
+
+			if err := runRepoChecks(ctx, githubClient, orgName, *repo.Name, includeAll); err != nil {
+				// Send error and cancel all other operations
+				select {
+				case errChan <- fmt.Errorf("failed checking %s/%s: %w", orgName, *repo.Name, err):
+					cancel() // Cancel all other goroutines
+				default:
+					// Another error was already sent
+				}
+			}
 		}()
 	}
 
 	wg.Wait()
-	return nil
+
+	// Check if any error occurred
+	select {
+	case err := <-errChan:
+		return err
+	default:
+		return nil
+	}
 }
 
 func runOrgLevelChecks(ctx context.Context, org *github.Organization, orgName string, includeAll bool) {
@@ -126,46 +157,66 @@ func runOrgLevelChecks(ctx context.Context, org *github.Organization, orgName st
 	}
 }
 
-func runRepoChecks(ctx context.Context, ghc *github.Client, orgName, repoName string, includeAll bool) {
+func runRepoChecks(ctx context.Context, githubClient *github.Client, orgName, repoName string, includeAll bool) error {
 	// Fetch all repo data in a single API call
-	repoData, _, err := ghc.Repositories.Get(ctx, orgName, repoName)
+	repoData, _, err := githubClient.Repositories.Get(ctx, orgName, repoName)
 	if err != nil {
-		return
+		return gherror.WrapAPIError(err, "fetching repository data", orgName, repoName)
 	}
 
 	// Check default workflow permissions - still needs its own API call
-	_ = repo.DefaultPermissions(ctx, ghc, orgName, repoName)
+	if err := repo.DefaultPermissions(ctx, githubClient, orgName, repoName); err != nil {
+		return fmt.Errorf("default permissions check failed: %w", err)
+	}
 
 	// Check deploy keys - still needs its own API call
-	_ = repo.DeployKeys(ctx, ghc, orgName, repoName)
+	if err := repo.DeployKeys(ctx, githubClient, orgName, repoName); err != nil {
+		return fmt.Errorf("deploy keys check failed: %w", err)
+	}
 
 	// Check vulnerability reporting - only for public repos and only in 'all' mode
 	// Private vulnerability reporting is only available for public repositories
 	if includeAll && !repoData.GetPrivate() {
-		_ = repo.VulnerabilityReporting(ctx, ghc, orgName, repoName, repoData)
+		if err := repo.VulnerabilityReporting(ctx, githubClient, orgName, repoName, repoData); err != nil {
+			return fmt.Errorf("vulnerability reporting check failed: %w", err)
+		}
 	}
 
 	// Check vulnerability alerts (Dependabot) - pass pre-fetched repository data
-	_ = repo.VulnerabilityAlerts(ctx, ghc, orgName, repoName, repoData)
+	if err := repo.VulnerabilityAlerts(ctx, githubClient, orgName, repoName, repoData); err != nil {
+		return fmt.Errorf("vulnerability alerts check failed: %w", err)
+	}
 
 	// Check commit signoff (excluded in standard mode) - pass pre-fetched repository data
 	if includeAll {
-		_ = repo.CommitSignoff(ctx, ghc, orgName, repoName, repoData)
+		if err := repo.CommitSignoff(ctx, githubClient, orgName, repoName, repoData); err != nil {
+			return fmt.Errorf("commit signoff check failed: %w", err)
+		}
 	}
 
 	// Check secret scanning - pass pre-fetched repository data
-	_ = repo.SecretScanning(ctx, ghc, orgName, repoName, repoData)
+	if err := repo.SecretScanning(ctx, githubClient, orgName, repoName, repoData); err != nil {
+		return fmt.Errorf("secret scanning check failed: %w", err)
+	}
 
 	// Check push protection (excluded in standard mode) - pass pre-fetched repository data
 	if includeAll {
-		_ = repo.PushProtection(ctx, ghc, orgName, repoName, repoData)
+		if err := repo.PushProtection(ctx, githubClient, orgName, repoName, repoData); err != nil {
+			return fmt.Errorf("push protection check failed: %w", err)
+		}
 	}
 
 	// Check validity checks - pass pre-fetched repository data
-	_ = repo.SecretValidityChecks(ctx, ghc, orgName, repoName, repoData)
+	if err := repo.SecretValidityChecks(ctx, githubClient, orgName, repoName, repoData); err != nil {
+		return fmt.Errorf("secret validity checks failed: %w", err)
+	}
 
 	// Non-provider patterns (excluded in standard mode)
 	if includeAll {
-		_ = repo.NonProviderPatterns(ctx, ghc, orgName, repoName)
+		if err := repo.NonProviderPatterns(ctx, githubClient, orgName, repoName); err != nil {
+			return fmt.Errorf("non-provider patterns check failed: %w", err)
+		}
 	}
+
+	return nil
 }

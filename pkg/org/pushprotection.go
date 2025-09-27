@@ -11,11 +11,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func pushProtection(ghc *github.Client, org *string) *cobra.Command {
-	wrapper := func(ctx context.Context, ghc *github.Client, org, repoName string) error {
-		return repo.PushProtection(ctx, ghc, org, repoName, nil)
+func pushProtection(githubClient *github.Client, org *string) *cobra.Command {
+	wrapper := func(ctx context.Context, githubClient *github.Client, org, repoName string) error {
+		return repo.PushProtection(ctx, githubClient, org, repoName, nil)
 	}
-	rm := NewRepoMapper("push-protection", ghc, org, wrapper)
+	rm := NewRepoMapper("push-protection", githubClient, org, wrapper)
 
 	return &cobra.Command{
 		Use:           "push-protection",

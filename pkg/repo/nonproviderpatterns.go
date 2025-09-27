@@ -14,14 +14,14 @@ import (
 
 var ErrNonProviderPatterns = gherror.New("Non-provider secret patterns disabled")
 
-func nonProviderPatterns(ghc *github.Client, org, repo *string) *cobra.Command {
+func nonProviderPatterns(githubClient *github.Client, org, repo *string) *cobra.Command {
 	return &cobra.Command{
 		Use:           "non-provider-patterns",
 		Short:         "Audit secret scanning for custom non-provider patterns.",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return NonProviderPatterns(cmd.Context(), ghc, *org, *repo)
+			return NonProviderPatterns(cmd.Context(), githubClient, *org, *repo)
 		},
 	}
 }
@@ -29,13 +29,13 @@ func nonProviderPatterns(ghc *github.Client, org, repo *string) *cobra.Command {
 // NonProviderPatterns checks if custom secret patterns are enabled
 // Note: Cannot accept pre-fetched repository data as the secret_scanning_non_provider_patterns field
 // is not available in go-github v75's Repository struct, requiring a custom API call
-func NonProviderPatterns(ctx context.Context, ghc *github.Client, org, repo string) error {
+func NonProviderPatterns(ctx context.Context, githubClient *github.Client, org, repo string) error {
 	// The non-provider patterns field is not yet available in go-github v75
 	// We need to make a direct API call to check this field
 
 	url := fmt.Sprintf("repos/%s/%s", org, repo)
 
-	req, err := ghc.NewRequest("GET", url, nil)
+	req, err := githubClient.NewRequest("GET", url, nil)
 	if err != nil {
 		return err
 	}
@@ -48,7 +48,7 @@ func NonProviderPatterns(ctx context.Context, ghc *github.Client, org, repo stri
 		} `json:"security_and_analysis"`
 	}
 
-	_, err = ghc.Do(ctx, req, &result)
+	_, err = githubClient.Do(ctx, req, &result)
 	if err != nil {
 		return err
 	}

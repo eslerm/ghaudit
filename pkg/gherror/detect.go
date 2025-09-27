@@ -5,13 +5,13 @@ package gherror
 
 import "sync/atomic"
 
-var errors = atomic.Bool{}
+var hadErrors = atomic.Bool{}
 
 // HadErrors returns true if any errors have been emitted.
 func HadErrors() bool {
-	return errors.Load()
+	return hadErrors.Load()
 }
 
 func sawError() {
-	errors.Store(true)
+	hadErrors.Store(true)
 }

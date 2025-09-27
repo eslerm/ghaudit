@@ -13,23 +13,23 @@ import (
 
 var errMembersCanCreateRepos = gherror.New("Members can create repositories")
 
-func memberRepoCreation(ghc *github.Client, org *string) *cobra.Command {
+func memberRepoCreation(githubClient *github.Client, org *string) *cobra.Command {
 	return &cobra.Command{
 		Use:           "member-repo-creation",
 		Short:         "Audit if members can create repositories.",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return MemberRepoCreation(cmd.Context(), ghc, *org)
+			return MemberRepoCreation(cmd.Context(), githubClient, *org)
 		},
 	}
 }
 
-func MemberRepoCreation(ctx context.Context, ghc *github.Client, org string) error {
+func MemberRepoCreation(ctx context.Context, githubClient *github.Client, org string) error {
 	// Get organization information
-	organization, _, err := ghc.Organizations.Get(ctx, org)
+	organization, _, err := githubClient.Organizations.Get(ctx, org)
 	if err != nil {
-		return err
+		return gherror.WrapAPIError(err, "fetching organization settings", org, "")
 	}
 
 	// Check if members can create repositories

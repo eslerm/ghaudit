@@ -13,22 +13,22 @@ import (
 
 var ErrSecretValidityChecks = gherror.New("Secret validity checks disabled")
 
-func secretValidityChecks(ghc *github.Client, org, repo *string) *cobra.Command {
+func secretValidityChecks(githubClient *github.Client, org, repo *string) *cobra.Command {
 	return &cobra.Command{
 		Use:           "secret-validity-checks",
 		Short:         "Audit secret scanning validity checks settings.",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return SecretValidityChecks(cmd.Context(), ghc, *org, *repo, nil)
+			return SecretValidityChecks(cmd.Context(), githubClient, *org, *repo, nil)
 		},
 	}
 }
 
 // SecretValidityChecks checks if secret validity verification is enabled
 // Pass repoData as nil to fetch it, or provide pre-fetched data to avoid API call
-func SecretValidityChecks(ctx context.Context, ghc *github.Client, orgName, repoName string, cachedRepoData *github.Repository) error {
-	repository, err := getRepository(ctx, ghc, orgName, repoName, cachedRepoData)
+func SecretValidityChecks(ctx context.Context, githubClient *github.Client, orgName, repoName string, cachedRepoData *github.Repository) error {
+	repository, err := getRepository(ctx, githubClient, orgName, repoName, cachedRepoData)
 	if err != nil {
 		return err
 	}

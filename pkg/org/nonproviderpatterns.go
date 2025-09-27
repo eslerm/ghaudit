@@ -9,8 +9,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func nonProviderPatterns(ghc *github.Client, org *string) *cobra.Command {
-	rm := NewRepoMapper("non-provider-patterns", ghc, org, repo.NonProviderPatterns)
+func nonProviderPatterns(githubClient *github.Client, org *string) *cobra.Command {
+	rm := NewRepoMapper("non-provider-patterns", githubClient, org, repo.NonProviderPatterns)
 
 	return &cobra.Command{
 		Use:           "non-provider-patterns",

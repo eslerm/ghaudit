@@ -9,8 +9,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func deployKeys(ghc *github.Client, org *string) *cobra.Command {
-	rm := NewRepoMapper("deploy-keys", ghc, org, repo.DeployKeys)
+func deployKeys(githubClient *github.Client, org *string) *cobra.Command {
+	rm := NewRepoMapper("deploy-keys", githubClient, org, repo.DeployKeys)
 
 	return &cobra.Command{
 		Use:           "deploy-keys",

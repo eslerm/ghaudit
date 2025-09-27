@@ -13,22 +13,22 @@ import (
 
 var ErrPushProtection = gherror.New("Secret scanning push protection disabled")
 
-func pushProtection(ghc *github.Client, org, repo *string) *cobra.Command {
+func pushProtection(githubClient *github.Client, org, repo *string) *cobra.Command {
 	return &cobra.Command{
 		Use:           "push-protection",
 		Short:         "Audit secret scanning push protection settings.",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return PushProtection(cmd.Context(), ghc, *org, *repo, nil)
+			return PushProtection(cmd.Context(), githubClient, *org, *repo, nil)
 		},
 	}
 }
 
 // PushProtection checks if secret scanning push protection is enabled
 // Pass repoData as nil to fetch it, or provide pre-fetched data to avoid API call
-func PushProtection(ctx context.Context, ghc *github.Client, orgName, repoName string, cachedRepoData *github.Repository) error {
-	repository, err := getRepository(ctx, ghc, orgName, repoName, cachedRepoData)
+func PushProtection(ctx context.Context, githubClient *github.Client, orgName, repoName string, cachedRepoData *github.Repository) error {
+	repository, err := getRepository(ctx, githubClient, orgName, repoName, cachedRepoData)
 	if err != nil {
 		return err
 	}

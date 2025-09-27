@@ -11,11 +11,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func commitSignoff(ghc *github.Client, org *string) *cobra.Command {
-	wrapper := func(ctx context.Context, ghc *github.Client, org, repoName string) error {
-		return repo.CommitSignoff(ctx, ghc, org, repoName, nil)
+func commitSignoff(githubClient *github.Client, org *string) *cobra.Command {
+	wrapper := func(ctx context.Context, githubClient *github.Client, org, repoName string) error {
+		return repo.CommitSignoff(ctx, githubClient, org, repoName, nil)
 	}
-	rm := NewRepoMapper("commit-signoff", ghc, org, wrapper)
+	rm := NewRepoMapper("commit-signoff", githubClient, org, wrapper)
 
 	return &cobra.Command{
 		Use:           "commit-signoff",

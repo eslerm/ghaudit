@@ -16,14 +16,14 @@ var (
 	ErrWriteDeployKey = gherror.New("Write deploy key")
 )
 
-func deployKeys(ghc *github.Client, org, repo *string) *cobra.Command {
+func deployKeys(githubClient *github.Client, org, repo *string) *cobra.Command {
 	return &cobra.Command{
 		Use:           "deploy-keys",
 		Short:         "Audit for usage of deploy keys.",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return DeployKeys(cmd.Context(), ghc, *org, *repo)
+			return DeployKeys(cmd.Context(), githubClient, *org, *repo)
 		},
 	}
 }
@@ -31,10 +31,10 @@ func deployKeys(ghc *github.Client, org, repo *string) *cobra.Command {
 // DeployKeys checks if deploy keys are used in the repository
 // Note: Cannot accept pre-fetched repository data as this requires a completely different API endpoint
 // (ListKeys) that returns data not included in the standard Repository object
-func DeployKeys(ctx context.Context, ghc *github.Client, org, repo string) error {
-	keys, _, err := ghc.Repositories.ListKeys(ctx, org, repo, &github.ListOptions{})
+func DeployKeys(ctx context.Context, githubClient *github.Client, org, repo string) error {
+	keys, _, err := githubClient.Repositories.ListKeys(ctx, org, repo, &github.ListOptions{})
 	if err != nil {
-		return err
+		return gherror.WrapAPIError(err, "listing deploy keys", org, repo)
 	}
 
 	// Check whether there are any deploy keys.
