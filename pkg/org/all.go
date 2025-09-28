@@ -8,11 +8,12 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/google/go-github/v75/github"
+	"github.com/spf13/cobra"
+
 	"github.com/chainguard-dev/ghaudit/pkg/config"
 	"github.com/chainguard-dev/ghaudit/pkg/gherror"
 	"github.com/chainguard-dev/ghaudit/pkg/repo"
-	"github.com/google/go-github/v75/github"
-	"github.com/spf13/cobra"
 )
 
 func all(githubClient *github.Client, org *string) *cobra.Command {
@@ -150,7 +151,7 @@ func runChecks(ctx context.Context, githubClient *github.Client, orgName string,
 	}
 }
 
-func runOrgLevelChecks(ctx context.Context, org *github.Organization, orgName string, includeAll bool) {
+func runOrgLevelChecks(_ context.Context, org *github.Organization, orgName string, includeAll bool) {
 	// Two-factor authentication check (excluded in standard mode)
 	if includeAll {
 		if !org.GetTwoFactorRequirementEnabled() {
@@ -193,6 +194,17 @@ func runOrgLevelChecks(ctx context.Context, org *github.Organization, orgName st
 	}
 }
 
+// checkHelper wraps common error handling logic
+func checkHelper(err error, checkName string, limitedAccess bool) error {
+	if err == nil {
+		return nil
+	}
+	if limitedAccess && gherror.Is403(err) {
+		return nil // Skip this check silently in limited access mode
+	}
+	return fmt.Errorf("%s check failed: %w", checkName, err)
+}
+
 func runRepoChecks(ctx context.Context, githubClient *github.Client, orgName, repoName string, includeAll bool, limitedAccess bool, errorsOnly bool) error {
 	// Fetch all repo data in a single API call
 	repoData, _, err := githubClient.Repositories.Get(ctx, orgName, repoName)
@@ -207,11 +219,8 @@ func runRepoChecks(ctx context.Context, githubClient *github.Client, orgName, re
 	actionsEnabled := true // Assume enabled by default
 	if includeAll {
 		enabled, err := repo.IsActionsEnabled(ctx, githubClient, orgName, repoName)
-		if err != nil {
-			if limitedAccess && gherror.Is403(err) {
-				return nil // Skip this check silently in limited access mode
-			}
-			return fmt.Errorf("actions enabled check failed: %w", err)
+		if err := checkHelper(err, "actions enabled", limitedAccess); err != nil {
+			return err
 		}
 		actionsEnabled = enabled
 		// No console output in JSON mode
@@ -219,84 +228,57 @@ func runRepoChecks(ctx context.Context, githubClient *github.Client, orgName, re
 
 	// Check default workflow permissions only if Actions are enabled
 	if actionsEnabled {
-		if err := repo.DefaultWorkflowPermissions(ctx, githubClient, orgName, repoName); err != nil {
-			if limitedAccess && gherror.Is403(err) {
-				return nil // Skip this check silently in limited access mode
-			}
-			return fmt.Errorf("default workflow permissions check failed: %w", err)
+		if err := checkHelper(repo.DefaultWorkflowPermissions(ctx, githubClient, orgName, repoName), "default workflow permissions", limitedAccess); err != nil {
+			return err
 		}
 	}
 
 	// Check deploy keys - still needs its own API call
-	if err := repo.DeployKeys(ctx, githubClient, orgName, repoName); err != nil {
-		if limitedAccess && gherror.Is403(err) {
-			return nil // Skip this check silently in limited access mode
-		}
-		return fmt.Errorf("deploy keys check failed: %w", err)
+	if err := checkHelper(repo.DeployKeys(ctx, githubClient, orgName, repoName), "deploy keys", limitedAccess); err != nil {
+		return err
 	}
 
 	// Check vulnerability reporting - only for public repos and only in 'all' mode
 	// Private vulnerability reporting is only available for public repositories
 	if includeAll && !repoData.GetPrivate() {
-		if err := repo.VulnerabilityReporting(ctx, githubClient, orgName, repoName, repoData); err != nil {
-			if limitedAccess && gherror.Is403(err) {
-				return nil // Skip this check silently in limited access mode
-			}
-			return fmt.Errorf("vulnerability reporting check failed: %w", err)
+		if err := checkHelper(repo.VulnerabilityReporting(ctx, githubClient, orgName, repoName, repoData), "vulnerability reporting", limitedAccess); err != nil {
+			return err
 		}
 	}
 
 	// Check vulnerability alerts (Dependabot) - pass pre-fetched repository data
-	if err := repo.VulnerabilityAlerts(ctx, githubClient, orgName, repoName, repoData); err != nil {
-		if limitedAccess && gherror.Is403(err) {
-			return nil // Skip this check silently in limited access mode
-		}
-		return fmt.Errorf("vulnerability alerts check failed: %w", err)
+	if err := checkHelper(repo.VulnerabilityAlerts(ctx, githubClient, orgName, repoName, repoData), "vulnerability alerts", limitedAccess); err != nil {
+		return err
 	}
 
 	// Check commit signoff (excluded in standard mode) - pass pre-fetched repository data
 	if includeAll {
-		if err := repo.CommitSignoff(ctx, githubClient, orgName, repoName, repoData); err != nil {
-			if limitedAccess && gherror.Is403(err) {
-				return nil // Skip this check silently in limited access mode
-			}
-			return fmt.Errorf("commit signoff check failed: %w", err)
+		if err := checkHelper(repo.CommitSignoff(ctx, githubClient, orgName, repoName, repoData), "commit signoff", limitedAccess); err != nil {
+			return err
 		}
 	}
 
 	// Check secret scanning - pass pre-fetched repository data
-	if err := repo.SecretScanning(ctx, githubClient, orgName, repoName, repoData); err != nil {
-		if limitedAccess && gherror.Is403(err) {
-			return nil // Skip this check silently in limited access mode
-		}
-		return fmt.Errorf("secret scanning check failed: %w", err)
+	if err := checkHelper(repo.SecretScanning(ctx, githubClient, orgName, repoName, repoData), "secret scanning", limitedAccess); err != nil {
+		return err
 	}
 
 	// Check push protection (excluded in standard mode) - pass pre-fetched repository data
 	if includeAll {
-		if err := repo.PushProtection(ctx, githubClient, orgName, repoName, repoData); err != nil {
-			if limitedAccess && gherror.Is403(err) {
-				return nil // Skip this check silently in limited access mode
-			}
-			return fmt.Errorf("push protection check failed: %w", err)
+		if err := checkHelper(repo.PushProtection(ctx, githubClient, orgName, repoName, repoData), "push protection", limitedAccess); err != nil {
+			return err
 		}
 	}
 
 	// Check validity checks - pass pre-fetched repository data
-	if err := repo.SecretValidityChecks(ctx, githubClient, orgName, repoName, repoData); err != nil {
-		if limitedAccess && gherror.Is403(err) {
-			return nil // Skip this check silently in limited access mode
-		}
-		return fmt.Errorf("secret validity checks failed: %w", err)
+	if err := checkHelper(repo.SecretValidityChecks(ctx, githubClient, orgName, repoName, repoData), "secret validity checks", limitedAccess); err != nil {
+		return err
 	}
 
 	// Non-provider patterns (excluded in standard mode)
 	if includeAll {
-		if err := repo.NonProviderPatterns(ctx, githubClient, orgName, repoName); err != nil {
-			if limitedAccess && gherror.Is403(err) {
-				return nil // Skip this check silently in limited access mode
-			}
-			return fmt.Errorf("non-provider patterns check failed: %w", err)
+		if err := checkHelper(repo.NonProviderPatterns(ctx, githubClient, orgName, repoName), "non-provider patterns", limitedAccess); err != nil {
+			return err
 		}
 	}
 

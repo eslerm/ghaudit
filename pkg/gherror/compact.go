@@ -5,6 +5,7 @@ package gherror
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 )
 
@@ -25,7 +26,7 @@ func (rs *ResultSet) ConvertToCompact(orgName string) *CompactOutput {
 
 	for _, result := range rs.Results {
 		// Skip error results
-		if result.Status == "error" {
+		if result.Status == StatusError {
 			continue
 		}
 
@@ -60,9 +61,9 @@ func normalizeCheckName(check string) string {
 		"Default member permissions":      "default_member_permission",
 
 		// Repository security settings
-		"Actions status":                                     "actions_enabled",
-		"Deploy keys":                                        "deploy_keys_count",
-		"Workflow permissions":                               "workflow_permissions",
+		"Actions status":       "actions_enabled",
+		"Deploy keys":          "deploy_keys_count",
+		"Workflow permissions": "workflow_permissions",
 		"Vulnerability alerts (Dependabot security updates)": "dependabot_alerts",
 		"Private vulnerability reporting":                    "private_vulnerability_reporting",
 		"Web commit signoff":                                 "web_commit_signoff",
@@ -94,7 +95,7 @@ func getCheckValue(result Result) interface{} {
 			return result.Value
 		}
 		// If passing with no value, means 0 deploy keys
-		if result.Status == "pass" {
+		if result.Status == StatusPass {
 			return 0
 		}
 		// If failing, return true to indicate presence
@@ -138,7 +139,7 @@ func getCheckValue(result Result) interface{} {
 		case "Members can create repositories",
 			"External collaborator invites":
 			// For these, pass means the feature is disabled (good)
-			return result.Status == "fail"
+			return result.Status == StatusFail
 		case "Two-factor authentication",
 			"Secret scanning",
 			"Secret scanning push protection",
@@ -148,10 +149,10 @@ func getCheckValue(result Result) interface{} {
 			"Secret validity checks",
 			"Non-provider patterns":
 			// For these, pass means the feature is enabled (good)
-			return result.Status == "pass"
+			return result.Status == StatusPass
 		default:
 			// Default: pass = good = true for security features
-			return result.Status == "pass"
+			return result.Status == StatusPass
 		}
 	}
 }
@@ -170,5 +171,8 @@ func (rs *ResultSet) OutputCompactJSON() error {
 	compact := rs.ConvertToCompact(orgName)
 	encoder := json.NewEncoder(rs.writer)
 	encoder.SetIndent("", "  ")
-	return encoder.Encode(compact)
+	if err := encoder.Encode(compact); err != nil {
+		return fmt.Errorf("encoding JSON output: %w", err)
+	}
+	return nil
 }

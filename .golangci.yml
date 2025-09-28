@@ -1,0 +1,198 @@
+# golangci-lint configuration for ghaudit
+# Focuses on security, performance, and Go best practices
+
+run:
+  # Timeout for analysis
+  timeout: 5m
+
+  # Include test files
+  tests: true
+
+  # Go version
+  go: "1.24"
+
+linters:
+  enable:
+    # Default linters (always good to have)
+    - errcheck      # Check for unchecked errors
+    - gosimple      # Simplify code
+    - govet         # Go vet examines Go source code
+    - ineffassign   # Detect ineffectual assignments
+    - staticcheck   # Advanced static analysis
+    - unused        # Check for unused code
+
+    # Security
+    - gosec         # Security checker
+
+    # Performance
+    - prealloc      # Find slice declarations that could potentially be preallocated
+
+    # Style & Best Practices
+    - gofmt         # Check whether code was gofmt-ed
+    - goimports     # Check import statements are formatted
+    - misspell      # Find commonly misspelled English words
+    - revive        # Fast, configurable linter
+    - unconvert     # Detect unnecessary type conversions
+    - gocyclo       # Cyclomatic complexity checker
+    - dupl          # Code clone detection
+    - goconst       # Find repeated strings that could be constants
+
+    # Error handling
+    - errorlint     # Find code that will cause problems with error wrapping
+
+    # Testing
+    - tparallel     # Detects inappropriate usage of t.Parallel()
+    - thelper       # Detect test helpers without t.Helper()
+
+
+    # Modern Go
+    - contextcheck  # Check for bugs in context usage
+    - nilerr        # Find code returning nil even with non-nil error
+
+  disable:
+    - depguard      # Not needed for this project
+    - exhaustive    # Too strict for this use case
+    - gochecknoglobals # Global variables are fine when used properly
+
+linters-settings:
+  # Error checking settings
+  errcheck:
+    # Check for deferred errors
+    check-type-assertions: true
+    check-blank: true
+
+  # Security settings
+  gosec:
+    # Adjust severity
+    severity: medium
+    # Exclude specific rules
+    excludes:
+      - G404  # Insecure random number source (already handled in retry.go)
+
+  # Cyclomatic complexity
+  gocyclo:
+    min-complexity: 20  # Increased for complex audit logic
+
+  # Duplicate code threshold
+  dupl:
+    threshold: 150  # Increased for CLI command patterns
+
+  # Constants detection
+  goconst:
+    min-len: 3
+    min-occurrences: 3
+
+  # Imports formatting
+  goimports:
+    local-prefixes: github.com/chainguard-dev/ghaudit
+
+  # Revive rules
+  revive:
+    rules:
+      - name: blank-imports
+      - name: context-as-argument
+      - name: context-keys-type
+      - name: dot-imports
+      - name: error-return
+      - name: error-strings
+      - name: error-naming
+      - name: exported
+      - name: if-return
+      - name: increment-decrement
+      - name: var-naming
+      - name: var-declaration
+      - name: range
+      - name: receiver-naming
+      - name: time-naming
+      - name: unexported-return
+      - name: indent-error-flow
+      - name: errorf
+      - name: empty-block
+      - name: superfluous-else
+      - name: unused-parameter
+      - name: unreachable-code
+      - name: redefines-builtin-id
+
+  # Static check settings
+  staticcheck:
+    checks: ["all"]
+
+  # Unused code settings
+  unused:
+    go: "1.24"
+
+issues:
+  # Exclude directories
+  exclude-dirs:
+    - vendor
+    - third_party
+    - testdata
+
+  # Maximum issues count per one linter
+  max-issues-per-linter: 50
+
+  # Maximum count of issues with same text
+  max-same-issues: 10
+
+  # Show only new issues (useful in CI)
+  new: false
+
+  # Exclude some linters from specific files
+  exclude-rules:
+    # Exclude unused parameter warnings for cobra command functions
+    - path: pkg/(org|repo)/.*\.go
+      text: "parameter 'args' seems to be unused"
+      linters:
+        - revive
+
+    # Allow similar command patterns in CLI setup files
+    - path: pkg/(org|repo)/(commitsignoff|pushprotection|secretscanning|secretvaliditychecks|vulnerabilityalerts|memberrepocreation|externalcollaboratorinvite)\.go
+      linters:
+        - dupl
+    # Exclude test files from some linters
+    - path: _test\.go
+      linters:
+        - gosec
+        - dupl
+        - goconst
+
+    # Exclude generated files
+    - path: generated
+      linters:
+        - golint
+        - stylecheck
+
+    # Exclude specific rules for main.go
+    - path: main.go
+      linters:
+        - gocyclo  # Main functions can be complex
+
+    # Allow fmt.Printf in CLI commands
+    - path: pkg/(org|repo)/.*\.go
+      text: "use of fmt.Printf"
+      linters:
+        - forbidigo
+
+  # Use default exclude patterns
+  exclude-use-default: true
+
+# Output configuration
+output:
+  # Output format
+  formats:
+    - format: colored-line-number
+
+  # Print lines of code with issue
+  print-issued-lines: true
+
+  # Print linter name in the end of issue text
+  print-linter-name: true
+
+  # Sort results
+  sort-results: true
+
+# Performance settings
+performance:
+  # Optimize memory usage
+  max-open-files: 2048
+  max-same-issues: 10

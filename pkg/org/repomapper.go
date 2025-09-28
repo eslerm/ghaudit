@@ -7,8 +7,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/chainguard-dev/ghaudit/pkg/gherror"
 	"github.com/google/go-github/v75/github"
+
+	"github.com/chainguard-dev/ghaudit/pkg/gherror"
 )
 
 type RepoMapper interface {

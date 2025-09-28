@@ -7,9 +7,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/chainguard-dev/ghaudit/pkg/gherror"
 	"github.com/google/go-github/v75/github"
 	"github.com/spf13/cobra"
+
+	"github.com/chainguard-dev/ghaudit/pkg/gherror"
 )
 
 func nonProviderPatterns(githubClient *github.Client, org, repo *string) *cobra.Command {

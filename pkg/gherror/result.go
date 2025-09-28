@@ -9,6 +9,21 @@ import (
 	"sync"
 )
 
+// Status constants for Result.Status field
+const (
+	StatusPass  = "pass"
+	StatusFail  = "fail"
+	StatusSkip  = "skip"
+	StatusError = "error"
+)
+
+// Severity constants for Result.Severity field
+const (
+	SeverityError   = "error"
+	SeverityWarning = "warning"
+	SeverityInfo    = "info"
+)
+
 // Result represents the outcome of a security check
 type Result struct {
 	Check    string                 `json:"check"`
@@ -103,7 +118,7 @@ func Pass(check string, org, repo string) Result {
 		Check:  check,
 		Org:    org,
 		Repo:   repo,
-		Status: "pass",
+		Status: StatusPass,
 	}
 }
 
@@ -113,7 +128,7 @@ func Fail(check string, org, repo string, severity, message string) Result {
 		Check:    check,
 		Org:      org,
 		Repo:     repo,
-		Status:   "fail",
+		Status:   StatusFail,
 		Severity: severity,
 		Message:  message,
 	}
@@ -125,8 +140,8 @@ func Info(check string, org, repo string, message string) Result {
 		Check:    check,
 		Org:      org,
 		Repo:     repo,
-		Status:   "pass",
-		Severity: "info",
+		Status:   StatusPass,
+		Severity: SeverityInfo,
 		Message:  message,
 	}
 }
@@ -137,7 +152,7 @@ func Skip(check string, org, repo string, reason string) Result {
 		Check:   check,
 		Org:     org,
 		Repo:    repo,
-		Status:  "skip",
+		Status:  StatusSkip,
 		Message: reason,
 	}
 }
@@ -148,7 +163,7 @@ func ErrorResult(check string, org, repo string, err error) Result {
 		Check:  check,
 		Org:    org,
 		Repo:   repo,
-		Status: "error",
+		Status: StatusError,
 		Error:  err.Error(),
 	}
 }

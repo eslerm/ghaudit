@@ -4,9 +4,10 @@
 package org
 
 import (
-	"github.com/chainguard-dev/ghaudit/pkg/repo"
 	"github.com/google/go-github/v75/github"
 	"github.com/spf13/cobra"
+
+	"github.com/chainguard-dev/ghaudit/pkg/repo"
 )
 
 func deployKeys(githubClient *github.Client, org *string) *cobra.Command {

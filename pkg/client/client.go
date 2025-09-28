@@ -29,13 +29,16 @@ var DefaultConfig = Config{
 
 // NewGitHubClient creates an optimized GitHub client
 func NewGitHubClient(ctx context.Context, config Config) *github.Client {
-	// Create OAuth2 client with token
+	// Create OAuth2 client with token using context
 	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: config.Token})
 
-	// Customize the HTTP client for better performance
-	httpClient := &http.Client{
-		Timeout: config.Timeout,
-		Transport: &http.Transport{
+	// Create OAuth2 client with context for proper cancellation support
+	httpClient := oauth2.NewClient(ctx, ts)
+
+	// Customize the existing transport
+	if transport, ok := httpClient.Transport.(*oauth2.Transport); ok {
+		// Create optimized base transport
+		transport.Base = &http.Transport{
 			MaxIdleConns:        config.MaxIdleConns,
 			MaxIdleConnsPerHost: 10,
 			IdleConnTimeout:     config.IdleConnTimeout,
@@ -43,14 +46,11 @@ func NewGitHubClient(ctx context.Context, config Config) *github.Client {
 			ForceAttemptHTTP2: true,
 			// Compression
 			DisableCompression: false,
-		},
+		}
 	}
 
-	// Wrap the OAuth transport with our custom transport
-	httpClient.Transport = &oauth2.Transport{
-		Source: ts,
-		Base:   httpClient.Transport,
-	}
+	// Set timeout on the client
+	httpClient.Timeout = config.Timeout
 
 	// Create GitHub client
 	client := github.NewClient(httpClient)

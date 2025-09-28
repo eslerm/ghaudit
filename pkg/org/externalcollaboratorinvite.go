@@ -6,9 +6,10 @@ package org
 import (
 	"context"
 
-	"github.com/chainguard-dev/ghaudit/pkg/gherror"
 	"github.com/google/go-github/v75/github"
 	"github.com/spf13/cobra"
+
+	"github.com/chainguard-dev/ghaudit/pkg/gherror"
 )
 
 func externalCollaboratorInvite(githubClient *github.Client, org *string) *cobra.Command {

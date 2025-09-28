@@ -7,10 +7,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/chainguard-dev/ghaudit/pkg/config"
-	"github.com/chainguard-dev/ghaudit/pkg/gherror"
 	"github.com/google/go-github/v75/github"
 	"github.com/spf13/cobra"
+
+	"github.com/chainguard-dev/ghaudit/pkg/config"
+	"github.com/chainguard-dev/ghaudit/pkg/gherror"
 )
 
 func deployKeys(githubClient *github.Client, org, repo *string) *cobra.Command {

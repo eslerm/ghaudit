@@ -19,7 +19,7 @@ type errorImpl struct {
 }
 
 // Emit implements the Error interface.
-func (e *errorImpl) Emit(msg string, args ...interface{}) {
+func (e *errorImpl) Emit(_ string, _ ...interface{}) {
 	sawError()
 	// Errors are now only recorded in the global result set for JSON output
 	// No direct output to stdout

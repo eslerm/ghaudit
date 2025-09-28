@@ -8,12 +8,13 @@ import (
 	"log"
 	"os"
 
-	"github.com/chainguard-dev/ghaudit/pkg/gherror"
-	"github.com/chainguard-dev/ghaudit/pkg/org"
-	"github.com/chainguard-dev/ghaudit/pkg/repo"
 	"github.com/google/go-github/v75/github"
 	"github.com/spf13/cobra"
 	"golang.org/x/oauth2"
+
+	"github.com/chainguard-dev/ghaudit/pkg/gherror"
+	"github.com/chainguard-dev/ghaudit/pkg/org"
+	"github.com/chainguard-dev/ghaudit/pkg/repo"
 )
 
 func New(githubClient *github.Client) *cobra.Command {
@@ -22,7 +23,7 @@ func New(githubClient *github.Client) *cobra.Command {
 		Short:         "GitHub Audit",
 		SilenceUsage:  true,
 		SilenceErrors: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			return cmd.Usage()
 		},
 	}

@@ -4,10 +4,11 @@
 package repo
 
 import (
-	"github.com/chainguard-dev/ghaudit/pkg/config"
-	"github.com/chainguard-dev/ghaudit/pkg/gherror"
 	"github.com/google/go-github/v75/github"
 	"github.com/spf13/cobra"
+
+	"github.com/chainguard-dev/ghaudit/pkg/config"
+	"github.com/chainguard-dev/ghaudit/pkg/gherror"
 )
 
 func New(githubClient *github.Client) *cobra.Command {

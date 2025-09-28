@@ -175,7 +175,7 @@ func addJitter(duration time.Duration) time.Duration {
 }
 
 // logRetryAttempt logs retry information for debugging
-func logRetryAttempt(operation string, attempt, maxRetries int, backoff time.Duration, err error) {
+func logRetryAttempt(_ string, _, _ int, _ time.Duration, _ error) {
 	// No console output in JSON mode - retries are handled silently
 	// Consider adding retry information to the JSON output if needed
 }
