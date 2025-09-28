@@ -17,14 +17,14 @@ type JSONOutput struct {
 }
 
 // ConvertToJSON converts a ResultSet to standard JSON format
-func (rs *ResultSet) ConvertToJSON(orgName string) *JSONOutput {
+func (resultSet *ResultSet) ConvertToJSON(orgName string) *JSONOutput {
 	output := &JSONOutput{
 		Organization: orgName,
 		OrgSettings:  make(map[string]interface{}),
 		Repositories: make(map[string]map[string]interface{}),
 	}
 
-	for _, result := range rs.Results {
+	for _, result := range resultSet.Results {
 		// Skip error results
 		if result.Status == StatusError {
 			continue
@@ -158,18 +158,18 @@ func getCheckValue(result Result) interface{} {
 }
 
 // OutputJSON outputs results in standard JSON format
-func (rs *ResultSet) OutputJSON() error {
+func (resultSet *ResultSet) OutputJSON() error {
 	// Extract org name from first result
 	orgName := ""
-	for _, r := range rs.Results {
-		if r.Org != "" {
-			orgName = r.Org
+	for _, result := range resultSet.Results {
+		if result.Org != "" {
+			orgName = result.Org
 			break
 		}
 	}
 
-	jsonOutput := rs.ConvertToJSON(orgName)
-	encoder := json.NewEncoder(rs.writer)
+	jsonOutput := resultSet.ConvertToJSON(orgName)
+	encoder := json.NewEncoder(resultSet.writer)
 	encoder.SetIndent("", "  ")
 	if err := encoder.Encode(jsonOutput); err != nil {
 		return fmt.Errorf("encoding JSON output: %w", err)

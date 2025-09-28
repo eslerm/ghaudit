@@ -62,11 +62,11 @@ func NewResultSet(format string) *ResultSet {
 }
 
 // Add adds a result to the set
-func (rs *ResultSet) Add(r Result) {
-	rs.mu.Lock()
-	defer rs.mu.Unlock()
+func (resultSet *ResultSet) Add(result Result) {
+	resultSet.mu.Lock()
+	defer resultSet.mu.Unlock()
 
-	rs.Results = append(rs.Results, r)
+	resultSet.Results = append(resultSet.Results, result)
 
 	// Don't emit for GitHub format - the checks handle this via err.Emit()
 	// We only collect results for JSON/text output
@@ -80,11 +80,11 @@ func InitGlobalResultSet(format string) {
 }
 
 // AddGlobalResult adds a result to the global collector if it exists
-func AddGlobalResult(r Result) {
+func AddGlobalResult(result Result) {
 	globalMutex.Lock()
 	defer globalMutex.Unlock()
 	if globalResultSet != nil {
-		globalResultSet.Add(r)
+		globalResultSet.Add(result)
 	}
 }
 
@@ -97,8 +97,8 @@ func GetGlobalResultSet() *ResultSet {
 
 
 // Output writes all results in JSON format
-func (rs *ResultSet) Output() error {
-	return rs.OutputJSON()
+func (resultSet *ResultSet) Output() error {
+	return resultSet.OutputJSON()
 }
 
 // Pass creates a passing result
