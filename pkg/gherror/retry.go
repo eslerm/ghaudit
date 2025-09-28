@@ -91,7 +91,7 @@ func shouldRetry(err error, attempt int, maxRetries int) bool {
 		return false
 	}
 
-	var ghErr *github.ErrorResponse
+	var githubError *github.ErrorResponse
 	var rateLimitErr *github.RateLimitError
 	var abuseRateLimitErr *github.AbuseRateLimitError
 
@@ -101,8 +101,8 @@ func shouldRetry(err error, attempt int, maxRetries int) bool {
 	}
 
 	// Check GitHub API errors
-	if errors.As(err, &ghErr) && ghErr.Response != nil {
-		switch ghErr.Response.StatusCode {
+	if errors.As(err, &githubError) && githubError.Response != nil {
+		switch githubError.Response.StatusCode {
 		case http.StatusTooManyRequests, // 429
 			http.StatusRequestTimeout,     // 408
 			http.StatusBadGateway,         // 502
@@ -116,7 +116,7 @@ func shouldRetry(err error, attempt int, maxRetries int) bool {
 			return false // Don't retry client errors
 		default:
 			// Retry on 5xx errors
-			return ghErr.Response.StatusCode >= 500
+			return githubError.Response.StatusCode >= 500
 		}
 	}
 
@@ -146,9 +146,9 @@ func calculateBackoff(err error, attempt int, config RetryConfig) time.Duration 
 	}
 
 	// Check for Retry-After header
-	var ghErr *github.ErrorResponse
-	if errors.As(err, &ghErr) && ghErr.Response != nil {
-		if retryAfter := ghErr.Response.Header.Get("Retry-After"); retryAfter != "" {
+	var githubError *github.ErrorResponse
+	if errors.As(err, &githubError) && githubError.Response != nil {
+		if retryAfter := githubError.Response.Header.Get("Retry-After"); retryAfter != "" {
 			if seconds, err := time.ParseDuration(retryAfter + "s"); err == nil {
 				return seconds
 			}

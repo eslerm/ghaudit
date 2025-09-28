@@ -18,32 +18,32 @@ type RepoMapper interface {
 
 type RepoFunc func(ctx context.Context, githubClient *github.Client, org, repo string) error
 
-func NewRepoMapper(name string, githubClient *github.Client, org *string, rf RepoFunc) RepoMapper {
+func NewRepoMapper(name string, githubClient *github.Client, org string, repoFunc RepoFunc) RepoMapper {
 	return &repoMapper{
 		name:         name,
 		githubClient: githubClient,
 		org:          org,
-		rf:           rf,
+		repoFunc:           repoFunc,
 	}
 }
 
 type repoMapper struct {
 	name         string
 	githubClient *github.Client
-	org          *string
-	rf           RepoFunc
+	org          string
+	repoFunc           RepoFunc
 }
 
-func (rm *repoMapper) Execute(ctx context.Context) error {
+func (mapper *repoMapper) Execute(ctx context.Context) error {
 	page := 0
 
 	for {
 		var repos []*github.Repository
 		var resp *github.Response
 
-		err := gherror.WithRetry(ctx, fmt.Sprintf("list %s repositories page %d", *rm.org, page), func() error {
+		err := gherror.WithRetry(ctx, fmt.Sprintf("list %s repositories page %d", mapper.org, page), func() error {
 			var err error
-			repos, resp, err = rm.githubClient.Repositories.ListByOrg(ctx, *rm.org, &github.RepositoryListByOrgOptions{
+			repos, resp, err = mapper.githubClient.Repositories.ListByOrg(ctx, mapper.org, &github.RepositoryListByOrgOptions{
 				ListOptions: github.ListOptions{
 					Page:    page,
 					PerPage: 100,
@@ -52,7 +52,7 @@ func (rm *repoMapper) Execute(ctx context.Context) error {
 			return err
 		})
 		if err != nil {
-			return gherror.WrapAPIError(err, "listing repositories", *rm.org, "")
+			return gherror.WrapAPIError(err, "listing repositories", mapper.org, "")
 		}
 
 		for _, repository := range repos {
@@ -61,8 +61,8 @@ func (rm *repoMapper) Execute(ctx context.Context) error {
 				continue
 			}
 
-			if err := rm.rf(ctx, rm.githubClient, *rm.org, repository.GetName()); err != nil {
-				return fmt.Errorf("failed checking %s/%s: %w", *rm.org, repository.GetName(), err)
+			if err := mapper.repoFunc(ctx, mapper.githubClient, mapper.org, repository.GetName()); err != nil {
+				return fmt.Errorf("failed checking %s/%s: %w", mapper.org, repository.GetName(), err)
 			}
 		}
 

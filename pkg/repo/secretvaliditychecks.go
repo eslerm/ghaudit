@@ -10,14 +10,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func secretValidityChecks(githubClient *github.Client, org, repo *string) *cobra.Command {
+func secretValidityChecks(githubClient *github.Client, org, repo string) *cobra.Command {
 	return &cobra.Command{
 		Use:           "secret-validity-checks",
 		Short:         "Audit secret scanning validity checks settings.",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return SecretValidityChecks(cmd.Context(), githubClient, *org, *repo, nil)
+			return SecretValidityChecks(cmd.Context(), githubClient, org, repo, nil)
 		},
 	}
 }

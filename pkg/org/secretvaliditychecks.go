@@ -12,11 +12,11 @@ import (
 	"github.com/chainguard-dev/ghaudit/pkg/repo"
 )
 
-func secretValidityChecks(githubClient *github.Client, org *string) *cobra.Command {
-	wrapper := func(ctx context.Context, githubClient *github.Client, org, repoName string) error {
+func secretValidityChecks(githubClient *github.Client, org string) *cobra.Command {
+	checkFunction := func(ctx context.Context, githubClient *github.Client, org, repoName string) error {
 		return repo.SecretValidityChecks(ctx, githubClient, org, repoName, nil)
 	}
-	rm := NewRepoMapper("secret-validity-checks", githubClient, org, wrapper)
+	repoMapper := NewRepoMapper("secret-validity-checks", githubClient, org, checkFunction)
 
 	return &cobra.Command{
 		Use:           "secret-validity-checks",
@@ -24,7 +24,7 @@ func secretValidityChecks(githubClient *github.Client, org *string) *cobra.Comma
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return rm.Execute(cmd.Context())
+			return repoMapper.Execute(cmd.Context())
 		},
 	}
 }

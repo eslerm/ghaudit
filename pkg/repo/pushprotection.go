@@ -10,14 +10,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func pushProtection(githubClient *github.Client, org, repo *string) *cobra.Command {
+func pushProtection(githubClient *github.Client, org, repo string) *cobra.Command {
 	return &cobra.Command{
 		Use:           "push-protection",
 		Short:         "Audit secret scanning push protection settings.",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return PushProtection(cmd.Context(), githubClient, *org, *repo, nil)
+			return PushProtection(cmd.Context(), githubClient, org, repo, nil)
 		},
 	}
 }

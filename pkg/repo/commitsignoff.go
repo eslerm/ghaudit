@@ -13,14 +13,14 @@ import (
 	"github.com/chainguard-dev/ghaudit/pkg/gherror"
 )
 
-func commitSignoff(githubClient *github.Client, org, repo *string) *cobra.Command {
+func commitSignoff(githubClient *github.Client, org, repo string) *cobra.Command {
 	return &cobra.Command{
 		Use:           "commit-signoff",
 		Short:         "Audit web commit signoff requirements.",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return CommitSignoff(cmd.Context(), githubClient, *org, *repo, nil)
+			return CommitSignoff(cmd.Context(), githubClient, org, repo, nil)
 		},
 	}
 }

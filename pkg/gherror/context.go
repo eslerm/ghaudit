@@ -18,7 +18,7 @@ func WrapAPIError(err error, operation string, org string, repo string) error {
 		return nil
 	}
 
-	var ghErr *github.ErrorResponse
+	var githubError *github.ErrorResponse
 	var rateLimitErr *github.RateLimitError
 	var abuseRateLimitErr *github.AbuseRateLimitError
 
@@ -44,17 +44,17 @@ func WrapAPIError(err error, operation string, org string, repo string) error {
 	}
 
 	// Handle GitHub API errors with enhanced context
-	if errors.As(err, &ghErr) {
+	if errors.As(err, &githubError) {
 		// Add request ID if available for support purposes
-		if ghErr.Response != nil && ghErr.Response.Header != nil {
-			requestID := ghErr.Response.Header.Get("X-GitHub-Request-Id")
+		if githubError.Response != nil && githubError.Response.Header != nil {
+			requestID := githubError.Response.Header.Get("X-GitHub-Request-Id")
 			if requestID != "" {
 				return fmt.Errorf("%s: %s (status: %d, request-id: %s)",
-					context, ghErr.Message, ghErr.Response.StatusCode, requestID)
+					context, githubError.Message, githubError.Response.StatusCode, requestID)
 			}
 		}
 		return fmt.Errorf("%s: %s (status: %d)",
-			context, ghErr.Message, ghErr.Response.StatusCode)
+			context, githubError.Message, githubError.Response.StatusCode)
 	}
 
 	// Default error wrapping
@@ -63,22 +63,22 @@ func WrapAPIError(err error, operation string, org string, repo string) error {
 
 // IsRetryableError determines if an error can be retried
 func IsRetryableError(err error) bool {
-	var ghErr *github.ErrorResponse
-	if errors.As(err, &ghErr) && ghErr.Response != nil {
+	var githubError *github.ErrorResponse
+	if errors.As(err, &githubError) && githubError.Response != nil {
 		// Retry on server errors and rate limits
-		return ghErr.Response.StatusCode >= 500 ||
-			ghErr.Response.StatusCode == http.StatusTooManyRequests ||
-			ghErr.Response.StatusCode == http.StatusRequestTimeout
+		return githubError.Response.StatusCode >= 500 ||
+			githubError.Response.StatusCode == http.StatusTooManyRequests ||
+			githubError.Response.StatusCode == http.StatusRequestTimeout
 	}
 	return false
 }
 
 // IsPermissionError checks if error is due to insufficient permissions
 func IsPermissionError(err error) bool {
-	var ghErr *github.ErrorResponse
-	if errors.As(err, &ghErr) && ghErr.Response != nil {
-		return ghErr.Response.StatusCode == http.StatusForbidden ||
-			ghErr.Response.StatusCode == http.StatusUnauthorized
+	var githubError *github.ErrorResponse
+	if errors.As(err, &githubError) && githubError.Response != nil {
+		return githubError.Response.StatusCode == http.StatusForbidden ||
+			githubError.Response.StatusCode == http.StatusUnauthorized
 	}
 	return false
 }
@@ -96,9 +96,9 @@ func Is403(err error) bool {
 	}
 
 	// Check the actual GitHub error
-	var ghErr *github.ErrorResponse
-	if errors.As(err, &ghErr) && ghErr.Response != nil {
-		return ghErr.Response.StatusCode == http.StatusForbidden
+	var githubError *github.ErrorResponse
+	if errors.As(err, &githubError) && githubError.Response != nil {
+		return githubError.Response.StatusCode == http.StatusForbidden
 	}
 	return false
 }
@@ -116,9 +116,9 @@ func Is404(err error) bool {
 	}
 
 	// Check the actual GitHub error
-	var ghErr *github.ErrorResponse
-	if errors.As(err, &ghErr) && ghErr.Response != nil {
-		return ghErr.Response.StatusCode == http.StatusNotFound
+	var githubError *github.ErrorResponse
+	if errors.As(err, &githubError) && githubError.Response != nil {
+		return githubError.Response.StatusCode == http.StatusNotFound
 	}
 	return false
 }

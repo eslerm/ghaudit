@@ -10,8 +10,8 @@ import (
 	"github.com/chainguard-dev/ghaudit/pkg/repo"
 )
 
-func deployKeys(githubClient *github.Client, org *string) *cobra.Command {
-	rm := NewRepoMapper("deploy-keys", githubClient, org, repo.DeployKeys)
+func deployKeys(githubClient *github.Client, org string) *cobra.Command {
+	repoMapper := NewRepoMapper("deploy-keys", githubClient, org, repo.DeployKeys)
 
 	return &cobra.Command{
 		Use:           "deploy-keys",
@@ -19,7 +19,7 @@ func deployKeys(githubClient *github.Client, org *string) *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return rm.Execute(cmd.Context())
+			return repoMapper.Execute(cmd.Context())
 		},
 	}
 }

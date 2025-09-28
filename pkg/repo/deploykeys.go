@@ -14,7 +14,7 @@ import (
 	"github.com/chainguard-dev/ghaudit/pkg/gherror"
 )
 
-func deployKeys(githubClient *github.Client, org, repo *string) *cobra.Command {
+func deployKeys(githubClient *github.Client, org, repo string) *cobra.Command {
 	return &cobra.Command{
 		Use:           "deploy-keys",
 		Short:         "Audit for usage of deploy keys.",
@@ -28,7 +28,7 @@ func deployKeys(githubClient *github.Client, org, repo *string) *cobra.Command {
 			gherror.InitGlobalResultSet(format)
 
 			// Run the check
-			err := DeployKeys(ctx, githubClient, *org, *repo)
+			err := DeployKeys(ctx, githubClient, org, repo)
 
 			// Output results if JSON or text format
 			if rs := gherror.GetGlobalResultSet(); rs != nil && format != "github" {

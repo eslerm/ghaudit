@@ -16,7 +16,7 @@ import (
 	"github.com/chainguard-dev/ghaudit/pkg/repo"
 )
 
-func all(githubClient *github.Client, org *string) *cobra.Command {
+func all(githubClient *github.Client, org string) *cobra.Command {
 	var includeArchived bool
 	var limitedAccess bool
 	var errorsOnly bool
@@ -27,7 +27,7 @@ func all(githubClient *github.Client, org *string) *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runChecks(cmd.Context(), githubClient, *org, true, includeArchived, limitedAccess, errorsOnly)
+			return runChecks(cmd.Context(), githubClient, org, true, includeArchived, limitedAccess, errorsOnly)
 		},
 	}
 

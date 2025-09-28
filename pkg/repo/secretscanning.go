@@ -10,14 +10,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func secretScanning(githubClient *github.Client, org, repo *string) *cobra.Command {
+func secretScanning(githubClient *github.Client, org, repo string) *cobra.Command {
 	return &cobra.Command{
 		Use:           "secret-scanning",
 		Short:         "Audit secret scanning settings.",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return SecretScanning(cmd.Context(), githubClient, *org, *repo, nil)
+			return SecretScanning(cmd.Context(), githubClient, org, repo, nil)
 		},
 	}
 }

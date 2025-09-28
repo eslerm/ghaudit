@@ -48,19 +48,19 @@ func New(githubClient *github.Client) *cobra.Command {
 
 	// Add sub-commands.
 	cmd.AddCommand(
-		all(githubClient, &org),
-		deployKeys(githubClient, &org),
-		defaultPermissions(githubClient, &org),
-		vulnerabilityReporting(githubClient, &org),
-		vulnerabilityAlerts(githubClient, &org),
-		commitSignoff(githubClient, &org),
-		secretScanning(githubClient, &org),
-		pushProtection(githubClient, &org),
-		secretValidityChecks(githubClient, &org),
-		nonProviderPatterns(githubClient, &org),
-		memberRepoCreation(githubClient, &org),
-		twoFactor(githubClient, &org),
-		externalCollaboratorInvite(githubClient, &org),
+		all(githubClient, org),
+		deployKeys(githubClient, org),
+		defaultPermissions(githubClient, org),
+		vulnerabilityReporting(githubClient, org),
+		vulnerabilityAlerts(githubClient, org),
+		commitSignoff(githubClient, org),
+		secretScanning(githubClient, org),
+		pushProtection(githubClient, org),
+		secretValidityChecks(githubClient, org),
+		nonProviderPatterns(githubClient, org),
+		memberRepoCreation(githubClient, org),
+		twoFactor(githubClient, org),
+		externalCollaboratorInvite(githubClient, org),
 	)
 
 	return cmd

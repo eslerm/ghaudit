@@ -10,8 +10,8 @@ import (
 	"github.com/chainguard-dev/ghaudit/pkg/repo"
 )
 
-func nonProviderPatterns(githubClient *github.Client, org *string) *cobra.Command {
-	rm := NewRepoMapper("non-provider-patterns", githubClient, org, repo.NonProviderPatterns)
+func nonProviderPatterns(githubClient *github.Client, org string) *cobra.Command {
+	repoMapper := NewRepoMapper("non-provider-patterns", githubClient, org, repo.NonProviderPatterns)
 
 	return &cobra.Command{
 		Use:           "non-provider-patterns",
@@ -19,7 +19,7 @@ func nonProviderPatterns(githubClient *github.Client, org *string) *cobra.Comman
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return rm.Execute(cmd.Context())
+			return repoMapper.Execute(cmd.Context())
 		},
 	}
 }

@@ -13,14 +13,14 @@ import (
 	"github.com/chainguard-dev/ghaudit/pkg/gherror"
 )
 
-func defaultPermissions(githubClient *github.Client, org, repo *string) *cobra.Command {
+func defaultPermissions(githubClient *github.Client, org, repo string) *cobra.Command {
 	return &cobra.Command{
 		Use:           "default-permissions",
 		Short:         "Audit the default permissions.",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return DefaultWorkflowPermissions(cmd.Context(), githubClient, *org, *repo)
+			return DefaultWorkflowPermissions(cmd.Context(), githubClient, org, repo)
 		},
 	}
 }

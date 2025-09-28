@@ -13,14 +13,14 @@ import (
 	"github.com/chainguard-dev/ghaudit/pkg/gherror"
 )
 
-func nonProviderPatterns(githubClient *github.Client, org, repo *string) *cobra.Command {
+func nonProviderPatterns(githubClient *github.Client, org, repo string) *cobra.Command {
 	return &cobra.Command{
 		Use:           "non-provider-patterns",
 		Short:         "Audit secret scanning for custom non-provider patterns.",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return NonProviderPatterns(cmd.Context(), githubClient, *org, *repo)
+			return NonProviderPatterns(cmd.Context(), githubClient, org, repo)
 		},
 	}
 }
