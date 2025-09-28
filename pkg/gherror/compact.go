@@ -46,25 +46,31 @@ func (rs *ResultSet) ConvertToCompact(orgName string) *CompactOutput {
 	return output
 }
 
-// normalizeCheckName converts check names to compact JSON keys
+// normalizeCheckName converts check names to minimal yet descriptive JSON keys
 func normalizeCheckName(check string) string {
-	// Map verbose check names to concise keys
+	// Map verbose check names to minimal but clear keys
 	mappings := map[string]string{
-		"Two-factor authentication":                          "two_factor_required",
-		"Members can create repositories":                    "members_can_create_repos",
-		"Member repository creation":                         "members_can_create_repos",
-		"External collaborator invites":                      "external_collaborators",
-		"Default member permissions":                         "default_permission",
+		// Organization policies
+		"Two-factor authentication":       "two_factor_required",
+		"Members can create repositories": "member_can_create_repos",
+		"Member repository creation":      "member_can_create_repos",
+		"Member repo creation":            "member_can_create_repos",
+		"External collaborator invites":   "member_can_invite_collaborators",
+		"External collaborator invite":    "member_can_invite_collaborators",
+		"Default member permissions":      "default_member_permission",
+
+		// Repository security settings
 		"Actions status":                                     "actions_enabled",
-		"Deploy keys":                                        "deploy_keys",
+		"Deploy keys":                                        "deploy_keys_count",
 		"Workflow permissions":                               "workflow_permissions",
-		"Vulnerability alerts (Dependabot security updates)": "vulnerability_alerts",
+		"Vulnerability alerts (Dependabot security updates)": "dependabot_alerts",
 		"Private vulnerability reporting":                    "private_vulnerability_reporting",
-		"Web commit signoff":                                 "commit_signoff",
+		"Web commit signoff":                                 "web_commit_signoff",
 		"Secret scanning":                                    "secret_scanning",
 		"Secret scanning push protection":                    "push_protection",
+		"Push protection":                                    "push_protection",
 		"Secret validity checks":                             "secret_validity_checks",
-		"Non-provider patterns":                              "non_provider_patterns",
+		"Non-provider patterns":                              "custom_secret_patterns",
 	}
 
 	if mapped, ok := mappings[check]; ok {
@@ -105,8 +111,8 @@ func getCheckValue(result Result) interface{} {
 		// Return structured data if available
 		if result.Metadata != nil {
 			return map[string]interface{}{
-				"level":           result.Metadata["permission_level"],
-				"can_approve_prs": result.Metadata["can_approve_prs"],
+				"permission":     result.Metadata["permission_level"],
+				"can_approve_pr": result.Metadata["can_approve_prs"],
 			}
 		}
 		if result.Value != nil {
