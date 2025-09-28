@@ -9,16 +9,16 @@ import (
 	"strings"
 )
 
-// CompactOutput represents the compact JSON structure
-type CompactOutput struct {
+// JSONOutput represents the standard JSON output structure
+type JSONOutput struct {
 	Organization string                            `json:"organization"`
 	OrgSettings  map[string]interface{}            `json:"org_settings,omitempty"`
 	Repositories map[string]map[string]interface{} `json:"repositories,omitempty"`
 }
 
-// ConvertToCompact converts a ResultSet to compact JSON format
-func (rs *ResultSet) ConvertToCompact(orgName string) *CompactOutput {
-	output := &CompactOutput{
+// ConvertToJSON converts a ResultSet to standard JSON format
+func (rs *ResultSet) ConvertToJSON(orgName string) *JSONOutput {
+	output := &JSONOutput{
 		Organization: orgName,
 		OrgSettings:  make(map[string]interface{}),
 		Repositories: make(map[string]map[string]interface{}),
@@ -47,7 +47,7 @@ func (rs *ResultSet) ConvertToCompact(orgName string) *CompactOutput {
 	return output
 }
 
-// normalizeCheckName converts check names to minimal yet descriptive JSON keys
+// normalizeCheckName converts check names to consistent JSON field names
 func normalizeCheckName(check string) string {
 	// Map verbose check names to minimal but clear keys
 	mappings := map[string]string{
@@ -157,8 +157,8 @@ func getCheckValue(result Result) interface{} {
 	}
 }
 
-// OutputCompactJSON outputs results in compact JSON format
-func (rs *ResultSet) OutputCompactJSON() error {
+// OutputJSON outputs results in standard JSON format
+func (rs *ResultSet) OutputJSON() error {
 	// Extract org name from first result
 	orgName := ""
 	for _, r := range rs.Results {
@@ -168,10 +168,10 @@ func (rs *ResultSet) OutputCompactJSON() error {
 		}
 	}
 
-	compact := rs.ConvertToCompact(orgName)
+	jsonOutput := rs.ConvertToJSON(orgName)
 	encoder := json.NewEncoder(rs.writer)
 	encoder.SetIndent("", "  ")
-	if err := encoder.Encode(compact); err != nil {
+	if err := encoder.Encode(jsonOutput); err != nil {
 		return fmt.Errorf("encoding JSON output: %w", err)
 	}
 	return nil

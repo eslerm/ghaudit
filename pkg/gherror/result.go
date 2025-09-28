@@ -109,7 +109,7 @@ func ShouldEmitGitHub() bool {
 
 // Output writes all results in JSON format
 func (rs *ResultSet) Output() error {
-	return rs.OutputCompactJSON()
+	return rs.OutputJSON()
 }
 
 // Pass creates a passing result
