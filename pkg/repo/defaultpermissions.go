@@ -46,21 +46,52 @@ func DefaultWorkflowPermissions(ctx context.Context, githubClient *github.Client
 		// in all code paths (including standard mode and direct CLI calls). Consider removing
 		// this once the Actions check is consistently performed before workflow permissions.
 		if gherror.Is404(err) {
+			gherror.AddGlobalResult(gherror.Skip("Workflow permissions", org, repo, "Actions disabled"))
 			return nil // Actions disabled is not a security issue
 		}
+		gherror.AddGlobalResult(gherror.ErrorResult("Workflow permissions", org, repo, gherror.WrapAPIError(err, "fetching workflow permissions", org, repo)))
 		return gherror.WrapAPIError(err, "fetching workflow permissions", org, repo)
 	}
 
 	// Check whether the default workflow permissions are write.
-	if workflowPerms.GetDefaultWorkflowPermissions() == "write" {
-		ErrDefaultWorkflowPermissions.Emit("Elevated permissions in %s/%s", org, repo)
+	permission := workflowPerms.GetDefaultWorkflowPermissions()
+	canApprove := workflowPerms.GetCanApprovePullRequestReviews()
+
+	if permission == "write" || canApprove {
+		// Build comprehensive error message
+		issues := []string{}
+		if permission == "write" {
+			issues = append(issues, "elevated permissions")
+		}
+		if canApprove {
+			issues = append(issues, "can approve PRs")
+		}
+
+		message := fmt.Sprintf("Elevated permissions in %s/%s", org, repo)
+		result := gherror.Fail("Workflow permissions", org, repo, "error", message)
+		result.Metadata = map[string]interface{}{
+			"permission_level": permission,
+			"can_approve_prs":  canApprove,
+		}
+		gherror.AddGlobalResult(result)
+
+		// Emit for backward compatibility
+		if gherror.ShouldEmitGitHub() {
+			if permission == "write" {
+				ErrDefaultWorkflowPermissions.Emit("Elevated permissions in %s/%s", org, repo)
+			}
+			if canApprove {
+				ErrApprovePullRequests.Emit("Action approvers in %s/%s", org, repo)
+			}
+		}
+	} else {
+		result := gherror.Pass("Workflow permissions", org, repo)
+		result.Metadata = map[string]interface{}{
+			"permission_level": permission,
+			"can_approve_prs":  canApprove,
+		}
+		gherror.AddGlobalResult(result)
 	}
 
-	// Check whether workflows can approve PRs.
-	// TODO(mattmoor): We need to figure out how to disable checks for
-	// repos, since the advisory repos approve PRs from actions.
-	if workflowPerms.GetCanApprovePullRequestReviews() {
-		ErrApprovePullRequests.Emit("Action approvers in %s/%s", org, repo)
-	}
 	return nil
 }

@@ -5,6 +5,7 @@ package repo
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/chainguard-dev/ghaudit/pkg/gherror"
 	"github.com/google/go-github/v75/github"
@@ -30,19 +31,27 @@ func commitSignoff(githubClient *github.Client, org, repo *string) *cobra.Comman
 func CommitSignoff(ctx context.Context, githubClient *github.Client, orgName, repoName string, cachedRepoData *github.Repository) error {
 	repository, err := getRepository(ctx, githubClient, orgName, repoName, cachedRepoData)
 	if err != nil {
+		gherror.AddGlobalResult(gherror.ErrorResult("Web commit signoff", orgName, repoName, err))
 		return err
 	}
 
 	// Check if web commit signoff is required
 	// This ensures proper attribution and provides audit trail for code changes
-	checkBooleanSetting(
-		repository.GetWebCommitSignoffRequired(),
-		true,
-		ErrCommitSignoff,
-		"Web commit signoff not required in %s/%s",
-		orgName,
-		repoName,
-	)
+	signoffRequired := repository.GetWebCommitSignoffRequired()
+
+	if !signoffRequired {
+		message := fmt.Sprintf("Web commit signoff not required in %s/%s", orgName, repoName)
+		result := gherror.Fail("Web commit signoff", orgName, repoName, "error", message)
+		result.Value = signoffRequired
+		gherror.AddGlobalResult(result)
+		if gherror.ShouldEmitGitHub() {
+			ErrCommitSignoff.Emit(message)
+		}
+	} else {
+		result := gherror.Pass("Web commit signoff", orgName, repoName)
+		result.Value = signoffRequired
+		gherror.AddGlobalResult(result)
+	}
 
 	return nil
 }

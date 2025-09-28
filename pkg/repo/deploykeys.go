@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/chainguard-dev/ghaudit/pkg/config"
 	"github.com/chainguard-dev/ghaudit/pkg/gherror"
 	"github.com/google/go-github/v75/github"
 	"github.com/spf13/cobra"
@@ -24,7 +25,23 @@ func deployKeys(githubClient *github.Client, org, repo *string) *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return DeployKeys(cmd.Context(), githubClient, *org, *repo)
+			ctx := cmd.Context()
+
+			// Initialize global result collector for individual command
+			format := config.GetFormat(ctx)
+			gherror.InitGlobalResultSet(format)
+
+			// Run the check
+			err := DeployKeys(ctx, githubClient, *org, *repo)
+
+			// Output results if JSON or text format
+			if rs := gherror.GetGlobalResultSet(); rs != nil && format != "github" {
+				if outputErr := rs.Output(); outputErr != nil {
+					return outputErr
+				}
+			}
+
+			return err
 		},
 	}
 }
@@ -43,15 +60,45 @@ func DeployKeys(ctx context.Context, githubClient *github.Client, org, repo stri
 	if err != nil {
 		// 404 means we don't have admin access to view deploy keys for this repo
 		if gherror.Is404(err) {
+			// Record skip result for JSON output
+			gherror.AddGlobalResult(gherror.Skip("Deploy keys", org, repo, "No admin access"))
 			return nil // Skip repos where we lack admin access
 		}
+		// Record error result for JSON output
+		gherror.AddGlobalResult(gherror.ErrorResult("Deploy keys", org, repo, gherror.WrapAPIError(err, "listing deploy keys", org, repo)))
 		return gherror.WrapAPIError(err, "listing deploy keys", org, repo)
 	}
 
 	// Check whether there are any deploy keys.
-	// TODO(mattmoor): bump the severity if there are any non-readonly ones?
 	if len(keys) > 0 {
-		ErrDeployKeys.Emit("Deploy keys used in %s/%s", org, repo)
+		// Count read-only vs write keys
+		writeKeys := 0
+		for _, key := range keys {
+			if !key.GetReadOnly() {
+				writeKeys++
+			}
+		}
+
+		message := fmt.Sprintf("Deploy keys used in %s/%s", org, repo)
+
+		// Create result for JSON output
+		result := gherror.Fail("Deploy keys", org, repo, "error", message)
+		result.Value = len(keys)
+		result.Metadata = map[string]interface{}{
+			"total_keys":     len(keys),
+			"write_keys":     writeKeys,
+			"read_only_keys": len(keys) - writeKeys,
+		}
+		gherror.AddGlobalResult(result)
+
+		// Emit GitHub format for backward compatibility
+		if gherror.ShouldEmitGitHub() {
+			ErrDeployKeys.Emit(message)
+		}
+	} else {
+		// Record pass result for JSON output
+		gherror.AddGlobalResult(gherror.Pass("Deploy keys", org, repo))
 	}
+
 	return nil
 }

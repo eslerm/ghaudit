@@ -7,7 +7,10 @@ import "context"
 
 type contextKey string
 
-const errorsOnlyKey contextKey = "errorsOnly"
+const (
+	errorsOnlyKey contextKey = "errorsOnly"
+	formatKey     contextKey = "format"
+)
 
 // WithErrorsOnly adds the errorsOnly flag to the context
 func WithErrorsOnly(ctx context.Context, errorsOnly bool) context.Context {
@@ -20,4 +23,17 @@ func GetErrorsOnly(ctx context.Context) bool {
 		return v
 	}
 	return false
+}
+
+// WithFormat adds the output format to the context
+func WithFormat(ctx context.Context, format string) context.Context {
+	return context.WithValue(ctx, formatKey, format)
+}
+
+// GetFormat retrieves the output format from the context
+func GetFormat(ctx context.Context) string {
+	if v, ok := ctx.Value(formatKey).(string); ok {
+		return v
+	}
+	return "github" // Default to GitHub Actions format
 }

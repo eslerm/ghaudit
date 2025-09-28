@@ -38,19 +38,28 @@ func ActionsEnabled(ctx context.Context, githubClient *github.Client, org, repo 
 	if err != nil {
 		// 404 means Actions are completely disabled for this repository
 		if gherror.Is404(err) {
+			message := fmt.Sprintf("Actions disabled in %s/%s reduces attack surface", org, repo)
+			gherror.AddGlobalResult(gherror.Info("Actions status", org, repo, message))
 			if !config.GetErrorsOnly(ctx) {
-				fmt.Printf("::info title=Actions disabled (secure)::Actions disabled in %s/%s reduces attack surface\n", org, repo)
+				fmt.Printf("::info title=Actions disabled (secure)::%s\n", message)
 			}
 			return nil
 		}
+		gherror.AddGlobalResult(gherror.ErrorResult("Actions status", org, repo, gherror.WrapAPIError(err, "fetching actions permissions", org, repo)))
 		return gherror.WrapAPIError(err, "fetching actions permissions", org, repo)
 	}
 
 	// Check if actions are enabled
 	if !actionsPerms.GetEnabled() {
-		if !config.GetErrorsOnly(ctx) {
-			fmt.Printf("::info title=Actions disabled (secure)::Actions disabled in %s/%s reduces attack surface\n", org, repo)
+		message := fmt.Sprintf("Actions disabled in %s/%s reduces attack surface", org, repo)
+		gherror.AddGlobalResult(gherror.Info("Actions status", org, repo, message))
+		if gherror.ShouldEmitGitHub() && !config.GetErrorsOnly(ctx) {
+			fmt.Printf("::info title=Actions disabled (secure)::%s\n", message)
 		}
+	} else {
+		result := gherror.Pass("Actions status", org, repo)
+		result.Value = "enabled"
+		gherror.AddGlobalResult(result)
 	}
 
 	return nil

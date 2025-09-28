@@ -37,31 +37,13 @@ func all(githubClient *github.Client, org *string) *cobra.Command {
 	return cmd
 }
 
-func standard(githubClient *github.Client, org *string) *cobra.Command {
-	var includeArchived bool
-	var limitedAccess bool
-	var errorsOnly bool
-
-	cmd := &cobra.Command{
-		Use:           "standard",
-		Short:         "Run standard organization security audits (excludes PVR, non-provider patterns, 2FA, external collaborators, commit signoff, and push protection)",
-		SilenceUsage:  true,
-		SilenceErrors: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return runChecks(cmd.Context(), githubClient, *org, false, includeArchived, limitedAccess, errorsOnly)
-		},
-	}
-
-	cmd.Flags().BoolVar(&includeArchived, "include-archived", false, "Include archived repositories in audit")
-	cmd.Flags().BoolVar(&limitedAccess, "limited-access", false, "Skip repositories that return 403 errors (for limited access scenarios)")
-	cmd.Flags().BoolVar(&errorsOnly, "errors-only", false, "Show only errors, suppress informational messages")
-
-	return cmd
-}
-
 func runChecks(ctx context.Context, githubClient *github.Client, orgName string, includeAll bool, includeArchived bool, limitedAccess bool, errorsOnly bool) error {
 	// Add errorsOnly to context for downstream functions
 	ctx = config.WithErrorsOnly(ctx, errorsOnly)
+
+	// Initialize global result collector if JSON format is requested
+	format := config.GetFormat(ctx)
+	gherror.InitGlobalResultSet(format)
 
 	// Fetch organization data once with retry
 	var org *github.Organization
@@ -152,32 +134,75 @@ func runChecks(ctx context.Context, githubClient *github.Client, orgName string,
 	// Check if any error occurred
 	select {
 	case err := <-errChan:
+		// Output results even on error for JSON/text formats
+		if rs := gherror.GetGlobalResultSet(); rs != nil && (format == "json" || format == "text") {
+			rs.Output()
+		}
 		return err
 	default:
+		// Output results if format is JSON or text
+		if rs := gherror.GetGlobalResultSet(); rs != nil && (format == "json" || format == "text") {
+			return rs.Output()
+		}
 		return nil
 	}
 }
 
 func runOrgLevelChecks(ctx context.Context, org *github.Organization, orgName string, includeAll bool) {
+	format := config.GetFormat(ctx)
+	emitGitHub := format == "" || format == "github"
+
 	// Two-factor authentication check (excluded in standard mode)
-	if includeAll && !org.GetTwoFactorRequirementEnabled() {
-		errTwoFactorDisabled.Emit("Two-factor authentication not required in %s", orgName)
+	if includeAll {
+		if !org.GetTwoFactorRequirementEnabled() {
+			message := fmt.Sprintf("Two-factor authentication not required in %s", orgName)
+			gherror.AddGlobalResult(gherror.Fail("Two-factor authentication", orgName, "", "error", message))
+			if emitGitHub {
+				errTwoFactorDisabled.Emit(message)
+			}
+		} else {
+			gherror.AddGlobalResult(gherror.Pass("Two-factor authentication", orgName, ""))
+		}
 	}
 
 	// Member repo creation check
 	if org.GetMembersCanCreateRepos() {
-		errMembersCanCreateRepos.Emit("Members can create repositories in %s (should require github-iac)", orgName)
+		message := fmt.Sprintf("Members can create repositories in %s (should require github-iac)", orgName)
+		gherror.AddGlobalResult(gherror.Fail("Members can create repositories", orgName, "", "error", message))
+		if emitGitHub {
+			errMembersCanCreateRepos.Emit(message)
+		}
+	} else {
+		gherror.AddGlobalResult(gherror.Pass("Members can create repositories", orgName, ""))
 	}
 
 	// External collaborator invite check (excluded in standard mode)
-	if includeAll && org.GetMembersCanInviteOutsideCollaborators() {
-		errExternalCollaboratorInvite.Emit("Members can invite outside collaborators in %s (should be disabled for production orgs)", orgName)
+	if includeAll {
+		if org.GetMembersCanInviteOutsideCollaborators() {
+			message := fmt.Sprintf("Members can invite outside collaborators in %s (should be disabled for production orgs)", orgName)
+			gherror.AddGlobalResult(gherror.Fail("External collaborator invites", orgName, "", "error", message))
+			if emitGitHub {
+				errExternalCollaboratorInvite.Emit(message)
+			}
+		} else {
+			gherror.AddGlobalResult(gherror.Pass("External collaborator invites", orgName, ""))
+		}
 	}
 
 	// Default repository permissions check
 	defaultPerm := org.GetDefaultRepoPermission()
 	if defaultPerm == "write" || defaultPerm == "admin" {
-		gherror.New("Elevated default member permissions").Emit("Organization members have '%s' access to all repositories in %s by default (should be 'read' or 'none')", defaultPerm, orgName)
+		message := fmt.Sprintf("Organization members have '%s' access to all repositories in %s by default (should be 'read' or 'none')", defaultPerm, orgName)
+		result := gherror.Fail("Default member permissions", orgName, "", "error", message)
+		result.Value = defaultPerm
+		gherror.AddGlobalResult(result)
+		if emitGitHub {
+			gherror.New("Elevated default member permissions").Emit(message)
+		}
+	} else {
+		result := gherror.Pass("Default member permissions", orgName, "")
+		result.Value = defaultPerm
+		gherror.AddGlobalResult(result)
 	}
 }
 

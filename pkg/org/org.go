@@ -4,6 +4,7 @@
 package org
 
 import (
+	"github.com/chainguard-dev/ghaudit/pkg/config"
 	"github.com/google/go-github/v75/github"
 	"github.com/spf13/cobra"
 )
@@ -20,12 +21,20 @@ func New(githubClient *github.Client) *cobra.Command {
 	}
 
 	var org string
+	var format string
 	cmd.PersistentFlags().StringVarP(&org, "organization", "o", "", "organization to perform audits on.")
+	cmd.PersistentFlags().StringVar(&format, "format", "github", "Output format: github (default), json, or text")
+
+	// Add format to context for all subcommands
+	cmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		ctx := config.WithFormat(cmd.Context(), format)
+		cmd.SetContext(ctx)
+		return nil
+	}
 
 	// Add sub-commands.
 	cmd.AddCommand(
 		all(githubClient, &org),
-		standard(githubClient, &org),
 		deployKeys(githubClient, &org),
 		defaultPermissions(githubClient, &org),
 		vulnerabilityReporting(githubClient, &org),

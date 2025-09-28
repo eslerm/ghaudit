@@ -44,14 +44,30 @@ func checkSecurityFeature(
 	orgName, repoName string,
 	featureDescription string,
 ) {
+	checkName := featureDescription // Use feature description as check name
+
 	if repoData.SecurityAndAnalysis == nil {
-		err.Emit("%s disabled in %s/%s", featureDescription, orgName, repoName)
+		message := fmt.Sprintf("%s disabled in %s/%s", featureDescription, orgName, repoName)
+		gherror.AddGlobalResult(gherror.Fail(checkName, orgName, repoName, "error", message))
+		if gherror.ShouldEmitGitHub() {
+			err.Emit(message)
+		}
 		return
 	}
 
 	status := getStatus(repoData.SecurityAndAnalysis)
 	if status != "enabled" {
-		err.Emit("%s disabled in %s/%s", featureDescription, orgName, repoName)
+		message := fmt.Sprintf("%s disabled in %s/%s", featureDescription, orgName, repoName)
+		result := gherror.Fail(checkName, orgName, repoName, "error", message)
+		result.Value = status
+		gherror.AddGlobalResult(result)
+		if gherror.ShouldEmitGitHub() {
+			err.Emit(message)
+		}
+	} else {
+		result := gherror.Pass(checkName, orgName, repoName)
+		result.Value = status
+		gherror.AddGlobalResult(result)
 	}
 }
 

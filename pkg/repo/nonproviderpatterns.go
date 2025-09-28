@@ -37,6 +37,7 @@ func NonProviderPatterns(ctx context.Context, githubClient *github.Client, org, 
 
 	req, err := githubClient.NewRequest("GET", url, nil)
 	if err != nil {
+		gherror.AddGlobalResult(gherror.ErrorResult("Non-provider patterns", org, repo, err))
 		return err
 	}
 
@@ -50,12 +51,24 @@ func NonProviderPatterns(ctx context.Context, githubClient *github.Client, org, 
 
 	_, err = githubClient.Do(ctx, req, &result)
 	if err != nil {
+		gherror.AddGlobalResult(gherror.ErrorResult("Non-provider patterns", org, repo, err))
 		return err
 	}
 
 	// Check if non-provider patterns are enabled
-	if result.SecurityAndAnalysis.SecretScanningNonProviderPatterns.Status != "enabled" {
-		ErrNonProviderPatterns.Emit("Non-provider secret patterns disabled in %s/%s", org, repo)
+	status := result.SecurityAndAnalysis.SecretScanningNonProviderPatterns.Status
+	if status != "enabled" {
+		message := fmt.Sprintf("Non-provider secret patterns disabled in %s/%s", org, repo)
+		result := gherror.Fail("Non-provider patterns", org, repo, "error", message)
+		result.Value = status
+		gherror.AddGlobalResult(result)
+		if gherror.ShouldEmitGitHub() {
+			ErrNonProviderPatterns.Emit(message)
+		}
+	} else {
+		result := gherror.Pass("Non-provider patterns", org, repo)
+		result.Value = status
+		gherror.AddGlobalResult(result)
 	}
 
 	return nil

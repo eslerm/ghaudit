@@ -22,13 +22,16 @@ func New(githubClient *github.Client) *cobra.Command {
 
 	var org, repo string
 	var errorsOnly bool
+	var format string
 	cmd.PersistentFlags().StringVarP(&org, "organization", "o", "", "organization to perform audits on.")
 	cmd.PersistentFlags().StringVarP(&repo, "repository", "r", "", "repository to perform audits on.")
 	cmd.PersistentFlags().BoolVar(&errorsOnly, "errors-only", false, "Show only errors, suppress informational messages")
+	cmd.PersistentFlags().StringVar(&format, "format", "github", "Output format: github (default), json, or text")
 
-	// Add errorsOnly to context for all subcommands
+	// Add errorsOnly and format to context for all subcommands
 	cmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
 		ctx := config.WithErrorsOnly(cmd.Context(), errorsOnly)
+		ctx = config.WithFormat(ctx, format)
 		cmd.SetContext(ctx)
 		return nil
 	}
