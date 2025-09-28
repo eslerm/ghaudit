@@ -6,12 +6,9 @@ package repo
 import (
 	"context"
 
-	"github.com/chainguard-dev/ghaudit/pkg/gherror"
 	"github.com/google/go-github/v75/github"
 	"github.com/spf13/cobra"
 )
-
-var ErrSecretScanning = gherror.New("Secret scanning disabled")
 
 func secretScanning(githubClient *github.Client, org, repo *string) *cobra.Command {
 	return &cobra.Command{
@@ -43,7 +40,6 @@ func SecretScanning(ctx context.Context, githubClient *github.Client, orgName, r
 			}
 			return sa.SecretScanning.GetStatus()
 		},
-		ErrSecretScanning,
 		orgName,
 		repoName,
 		"Secret scanning",

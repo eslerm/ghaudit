@@ -13,11 +13,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	ErrDeployKeys     = gherror.New("Found deploy keys")
-	ErrWriteDeployKey = gherror.New("Write deploy key")
-)
-
 func deployKeys(githubClient *github.Client, org, repo *string) *cobra.Command {
 	return &cobra.Command{
 		Use:           "deploy-keys",
@@ -90,11 +85,6 @@ func DeployKeys(ctx context.Context, githubClient *github.Client, org, repo stri
 			"read_only_keys": len(keys) - writeKeys,
 		}
 		gherror.AddGlobalResult(result)
-
-		// Emit GitHub format for backward compatibility
-		if gherror.ShouldEmitGitHub() {
-			ErrDeployKeys.Emit(message)
-		}
 	} else {
 		// Record pass result for JSON output
 		gherror.AddGlobalResult(gherror.Pass("Deploy keys", org, repo))

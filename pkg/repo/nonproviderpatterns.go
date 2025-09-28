@@ -12,8 +12,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var ErrNonProviderPatterns = gherror.New("Non-provider secret patterns disabled")
-
 func nonProviderPatterns(githubClient *github.Client, org, repo *string) *cobra.Command {
 	return &cobra.Command{
 		Use:           "non-provider-patterns",
@@ -62,9 +60,6 @@ func NonProviderPatterns(ctx context.Context, githubClient *github.Client, org, 
 		result := gherror.Fail("Non-provider patterns", org, repo, "error", message)
 		result.Value = status
 		gherror.AddGlobalResult(result)
-		if gherror.ShouldEmitGitHub() {
-			ErrNonProviderPatterns.Emit(message)
-		}
 	} else {
 		result := gherror.Pass("Non-provider patterns", org, repo)
 		result.Value = status

@@ -11,8 +11,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var errMembersCanCreateRepos = gherror.New("Members can create repositories")
-
 func memberRepoCreation(githubClient *github.Client, org *string) *cobra.Command {
 	return &cobra.Command{
 		Use:           "member-repo-creation",

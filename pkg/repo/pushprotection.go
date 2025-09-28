@@ -6,12 +6,9 @@ package repo
 import (
 	"context"
 
-	"github.com/chainguard-dev/ghaudit/pkg/gherror"
 	"github.com/google/go-github/v75/github"
 	"github.com/spf13/cobra"
 )
-
-var ErrPushProtection = gherror.New("Secret scanning push protection disabled")
 
 func pushProtection(githubClient *github.Client, org, repo *string) *cobra.Command {
 	return &cobra.Command{
@@ -43,7 +40,6 @@ func PushProtection(ctx context.Context, githubClient *github.Client, orgName, r
 			}
 			return sa.SecretScanningPushProtection.GetStatus()
 		},
-		ErrPushProtection,
 		orgName,
 		repoName,
 		"Secret scanning push protection",

@@ -6,12 +6,9 @@ package repo
 import (
 	"context"
 
-	"github.com/chainguard-dev/ghaudit/pkg/gherror"
 	"github.com/google/go-github/v75/github"
 	"github.com/spf13/cobra"
 )
-
-var ErrSecretValidityChecks = gherror.New("Secret validity checks disabled")
 
 func secretValidityChecks(githubClient *github.Client, org, repo *string) *cobra.Command {
 	return &cobra.Command{
@@ -43,7 +40,6 @@ func SecretValidityChecks(ctx context.Context, githubClient *github.Client, orgN
 			}
 			return sa.SecretScanningValidityChecks.GetStatus()
 		},
-		ErrSecretValidityChecks,
 		orgName,
 		repoName,
 		"Secret validity checks",

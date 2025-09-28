@@ -11,8 +11,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var errExternalCollaboratorInvite = gherror.New("Members can invite external collaborators")
-
 func externalCollaboratorInvite(githubClient *github.Client, org *string) *cobra.Command {
 	return &cobra.Command{
 		Use:           "external-collaborator-invite",
@@ -35,7 +33,10 @@ func ExternalCollaboratorInvite(ctx context.Context, githubClient *github.Client
 	// Check if members can invite outside collaborators
 	// In production orgs, this should be false to prevent unauthorized access
 	if organization.GetMembersCanInviteOutsideCollaborators() {
-		errExternalCollaboratorInvite.Emit("Members can invite outside collaborators in %s (should be disabled for production orgs)", org)
+		message := "Members can invite outside collaborators (should be disabled for production orgs)"
+		gherror.AddGlobalResult(gherror.Fail("External collaborator invite", org, "", "error", message))
+	} else {
+		gherror.AddGlobalResult(gherror.Pass("External collaborator invite", org, ""))
 	}
 
 	return nil

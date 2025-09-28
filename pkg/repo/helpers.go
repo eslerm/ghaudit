@@ -40,7 +40,6 @@ func getRepository(ctx context.Context, githubClient *github.Client, orgName, re
 func checkSecurityFeature(
 	repoData *github.Repository,
 	getStatus func(*github.SecurityAndAnalysis) string,
-	err gherror.Error,
 	orgName, repoName string,
 	featureDescription string,
 ) {
@@ -49,9 +48,6 @@ func checkSecurityFeature(
 	if repoData.SecurityAndAnalysis == nil {
 		message := fmt.Sprintf("%s disabled in %s/%s", featureDescription, orgName, repoName)
 		gherror.AddGlobalResult(gherror.Fail(checkName, orgName, repoName, "error", message))
-		if gherror.ShouldEmitGitHub() {
-			err.Emit(message)
-		}
 		return
 	}
 
@@ -61,13 +57,9 @@ func checkSecurityFeature(
 		result := gherror.Fail(checkName, orgName, repoName, "error", message)
 		result.Value = status
 		gherror.AddGlobalResult(result)
-		if gherror.ShouldEmitGitHub() {
-			err.Emit(message)
-		}
 	} else {
 		result := gherror.Pass(checkName, orgName, repoName)
 		result.Value = status
 		gherror.AddGlobalResult(result)
 	}
 }
-

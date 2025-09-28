@@ -11,8 +11,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var errTwoFactorDisabled = gherror.New("Two-factor authentication not required")
-
 func twoFactor(githubClient *github.Client, org *string) *cobra.Command {
 	return &cobra.Command{
 		Use:           "two-factor",

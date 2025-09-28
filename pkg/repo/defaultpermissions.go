@@ -12,11 +12,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	ErrDefaultWorkflowPermissions = gherror.New("Elevated default workflow permissions")
-	ErrApprovePullRequests        = gherror.New("Actions can approve PRs")
-)
-
 func defaultPermissions(githubClient *github.Client, org, repo *string) *cobra.Command {
 	return &cobra.Command{
 		Use:           "default-permissions",
@@ -77,16 +72,6 @@ func DefaultWorkflowPermissions(ctx context.Context, githubClient *github.Client
 			"can_approve_prs":  canApprove,
 		}
 		gherror.AddGlobalResult(result)
-
-		// Emit for backward compatibility
-		if gherror.ShouldEmitGitHub() {
-			if permission == "write" {
-				ErrDefaultWorkflowPermissions.Emit("Elevated permissions in %s/%s", org, repo)
-			}
-			if canApprove {
-				ErrApprovePullRequests.Emit("Action approvers in %s/%s", org, repo)
-			}
-		}
 	} else {
 		result := gherror.Pass("Workflow permissions", org, repo)
 		result.Metadata = map[string]interface{}{

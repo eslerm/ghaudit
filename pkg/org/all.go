@@ -151,17 +151,11 @@ func runChecks(ctx context.Context, githubClient *github.Client, orgName string,
 }
 
 func runOrgLevelChecks(ctx context.Context, org *github.Organization, orgName string, includeAll bool) {
-	format := config.GetFormat(ctx)
-	emitGitHub := format == "" || format == "github"
-
 	// Two-factor authentication check (excluded in standard mode)
 	if includeAll {
 		if !org.GetTwoFactorRequirementEnabled() {
-			message := fmt.Sprintf("Two-factor authentication not required in %s", orgName)
+			message := "Two-factor authentication not required"
 			gherror.AddGlobalResult(gherror.Fail("Two-factor authentication", orgName, "", "error", message))
-			if emitGitHub {
-				errTwoFactorDisabled.Emit(message)
-			}
 		} else {
 			gherror.AddGlobalResult(gherror.Pass("Two-factor authentication", orgName, ""))
 		}
@@ -169,11 +163,8 @@ func runOrgLevelChecks(ctx context.Context, org *github.Organization, orgName st
 
 	// Member repo creation check
 	if org.GetMembersCanCreateRepos() {
-		message := fmt.Sprintf("Members can create repositories in %s (should require github-iac)", orgName)
+		message := "Members can create repositories (should require github-iac)"
 		gherror.AddGlobalResult(gherror.Fail("Members can create repositories", orgName, "", "error", message))
-		if emitGitHub {
-			errMembersCanCreateRepos.Emit(message)
-		}
 	} else {
 		gherror.AddGlobalResult(gherror.Pass("Members can create repositories", orgName, ""))
 	}
@@ -181,11 +172,8 @@ func runOrgLevelChecks(ctx context.Context, org *github.Organization, orgName st
 	// External collaborator invite check (excluded in standard mode)
 	if includeAll {
 		if org.GetMembersCanInviteOutsideCollaborators() {
-			message := fmt.Sprintf("Members can invite outside collaborators in %s (should be disabled for production orgs)", orgName)
+			message := "Members can invite outside collaborators (should be disabled for production orgs)"
 			gherror.AddGlobalResult(gherror.Fail("External collaborator invites", orgName, "", "error", message))
-			if emitGitHub {
-				errExternalCollaboratorInvite.Emit(message)
-			}
 		} else {
 			gherror.AddGlobalResult(gherror.Pass("External collaborator invites", orgName, ""))
 		}
@@ -198,9 +186,6 @@ func runOrgLevelChecks(ctx context.Context, org *github.Organization, orgName st
 		result := gherror.Fail("Default member permissions", orgName, "", "error", message)
 		result.Value = defaultPerm
 		gherror.AddGlobalResult(result)
-		if emitGitHub {
-			gherror.New("Elevated default member permissions").Emit(message)
-		}
 	} else {
 		result := gherror.Pass("Default member permissions", orgName, "")
 		result.Value = defaultPerm
