@@ -35,7 +35,10 @@ func MemberRepoCreation(ctx context.Context, githubClient *github.Client, org st
 	// Check if members can create repositories
 	// In production orgs, this should be false (require github-iac)
 	if organization.GetMembersCanCreateRepos() {
-		errMembersCanCreateRepos.Emit("Members can create repositories in %s (should require github-iac)", org)
+		message := "Members can create repositories (should require github-iac)"
+		gherror.AddGlobalResult(gherror.Fail("Member repo creation", org, "", "error", message))
+	} else {
+		gherror.AddGlobalResult(gherror.Pass("Member repo creation", org, ""))
 	}
 
 	return nil

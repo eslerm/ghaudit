@@ -35,7 +35,10 @@ func TwoFactor(ctx context.Context, githubClient *github.Client, org string) err
 	// Check if two-factor authentication is required
 	// This is critical for protecting against account compromise
 	if !organization.GetTwoFactorRequirementEnabled() {
-		errTwoFactorDisabled.Emit("Two-factor authentication not required in %s", org)
+		message := "Two-factor authentication not required"
+		gherror.AddGlobalResult(gherror.Fail("Two-factor authentication", org, "", "error", message))
+	} else {
+		gherror.AddGlobalResult(gherror.Pass("Two-factor authentication", org, ""))
 	}
 
 	return nil

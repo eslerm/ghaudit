@@ -4,7 +4,6 @@
 package gherror
 
 import (
-	"fmt"
 	"io"
 	"os"
 	"sync"
@@ -93,47 +92,9 @@ func ShouldEmitGitHub() bool {
 	return globalResultSet == nil || globalResultSet.format == "github" || globalResultSet.format == ""
 }
 
-// Output writes all results in the specified format
+// Output writes all results in JSON format
 func (rs *ResultSet) Output() error {
-	switch rs.format {
-	case "json":
-		return rs.OutputCompactJSON()
-	case "text":
-		return rs.outputText()
-	case "github":
-		// Already emitted during Add() for streaming
-		return nil
-	default:
-		return fmt.Errorf("unknown format: %s", rs.format)
-	}
-}
-
-
-// outputText writes results in human-readable text format
-func (rs *ResultSet) outputText() error {
-	for _, r := range rs.Results {
-		if r.Status == "pass" && r.Severity != "info" {
-			continue // Skip successful checks without info
-		}
-
-		// Format: [SEVERITY] Check: Message (org/repo)
-		location := ""
-		if r.Org != "" {
-			location = r.Org
-			if r.Repo != "" {
-				location += "/" + r.Repo
-			}
-			location = " (" + location + ")"
-		}
-
-		severity := ""
-		if r.Severity != "" {
-			severity = "[" + r.Severity + "] "
-		}
-
-		fmt.Fprintf(rs.writer, "%s%s: %s%s\n", severity, r.Check, r.Message, location)
-	}
-	return nil
+	return rs.OutputCompactJSON()
 }
 
 // Pass creates a passing result

@@ -5,6 +5,7 @@ package repo
 
 import (
 	"github.com/chainguard-dev/ghaudit/pkg/config"
+	"github.com/chainguard-dev/ghaudit/pkg/gherror"
 	"github.com/google/go-github/v75/github"
 	"github.com/spf13/cobra"
 )
@@ -22,17 +23,29 @@ func New(githubClient *github.Client) *cobra.Command {
 
 	var org, repo string
 	var errorsOnly bool
-	var format string
 	cmd.PersistentFlags().StringVarP(&org, "organization", "o", "", "organization to perform audits on.")
 	cmd.PersistentFlags().StringVarP(&repo, "repository", "r", "", "repository to perform audits on.")
 	cmd.PersistentFlags().BoolVar(&errorsOnly, "errors-only", false, "Show only errors, suppress informational messages")
-	cmd.PersistentFlags().StringVar(&format, "format", "github", "Output format: github (default), json, or text")
 
-	// Add errorsOnly and format to context for all subcommands
+	// Add errorsOnly to context and always use JSON format
 	cmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
 		ctx := config.WithErrorsOnly(cmd.Context(), errorsOnly)
-		ctx = config.WithFormat(ctx, format)
+		ctx = config.WithFormat(ctx, "json")
 		cmd.SetContext(ctx)
+		// Initialize global result collector for JSON output
+		gherror.InitGlobalResultSet("json")
+		return nil
+	}
+
+	// Output JSON results after command execution
+	cmd.PersistentPostRunE = func(cmd *cobra.Command, args []string) error {
+		// Skip for root command
+		if cmd.Name() == "repo" {
+			return nil
+		}
+		if rs := gherror.GetGlobalResultSet(); rs != nil {
+			return rs.Output()
+		}
 		return nil
 	}
 

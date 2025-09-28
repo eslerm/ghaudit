@@ -3,18 +3,13 @@
 
 package gherror
 
-import (
-	"fmt"
-	"os"
-)
-
-// Error is an interface for emitting errors to GitHub Actions.
+// Error is an interface for emitting errors.
 type Error interface {
-	// Emit emits an error message to GitHub Actions.
+	// Emit records an error (for JSON output).
 	Emit(msg string, args ...interface{})
 }
 
-// New creates a new class of GitHub Action errors with the given title.
+// New creates a new class of errors with the given title.
 func New(title string) Error {
 	return &errorImpl{title: title}
 }
@@ -26,5 +21,6 @@ type errorImpl struct {
 // Emit implements the Error interface.
 func (e *errorImpl) Emit(msg string, args ...interface{}) {
 	sawError()
-	_, _ = fmt.Fprintf(os.Stdout, `::error title=%s::%s%s`, e.title, fmt.Sprintf(msg, args...), "\n")
+	// Errors are now only recorded in the global result set for JSON output
+	// No direct output to stdout
 }

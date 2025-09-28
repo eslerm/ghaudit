@@ -41,9 +41,8 @@ func runChecks(ctx context.Context, githubClient *github.Client, orgName string,
 	// Add errorsOnly to context for downstream functions
 	ctx = config.WithErrorsOnly(ctx, errorsOnly)
 
-	// Initialize global result collector if JSON format is requested
-	format := config.GetFormat(ctx)
-	gherror.InitGlobalResultSet(format)
+	// Initialize global result collector (always JSON)
+	gherror.InitGlobalResultSet("json")
 
 	// Fetch organization data once with retry
 	var org *github.Organization
@@ -134,17 +133,17 @@ func runChecks(ctx context.Context, githubClient *github.Client, orgName string,
 	// Check if any error occurred
 	select {
 	case err := <-errChan:
-		// Output results even on error for JSON/text formats
-		if rs := gherror.GetGlobalResultSet(); rs != nil && (format == "json" || format == "text") {
+		// Always output JSON results even on error
+		if rs := gherror.GetGlobalResultSet(); rs != nil {
 			if outputErr := rs.Output(); outputErr != nil {
-				// Log output error but still return original error
-				fmt.Printf("::warning::Failed to output results: %v\n", outputErr)
+				// Return the output error if it occurs
+				return fmt.Errorf("failed to output results: %w", outputErr)
 			}
 		}
 		return err
 	default:
-		// Output results if format is JSON or text
-		if rs := gherror.GetGlobalResultSet(); rs != nil && (format == "json" || format == "text") {
+		// Always output JSON results
+		if rs := gherror.GetGlobalResultSet(); rs != nil {
 			return rs.Output()
 		}
 		return nil
@@ -230,9 +229,7 @@ func runRepoChecks(ctx context.Context, githubClient *github.Client, orgName, re
 			return fmt.Errorf("actions enabled check failed: %w", err)
 		}
 		actionsEnabled = enabled
-		if !enabled && !errorsOnly {
-			fmt.Printf("::info title=Actions disabled (secure)::Actions disabled in %s/%s reduces attack surface\n", orgName, repoName)
-		}
+		// No console output in JSON mode
 	}
 
 	// Check default workflow permissions only if Actions are enabled

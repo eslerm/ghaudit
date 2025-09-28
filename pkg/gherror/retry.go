@@ -175,10 +175,8 @@ func addJitter(duration time.Duration) time.Duration {
 
 // logRetryAttempt logs retry information for debugging
 func logRetryAttempt(operation string, attempt, maxRetries int, backoff time.Duration, err error) {
-	// Use structured logging when available
-	// For now, we'll emit as a GitHub Action warning
-	fmt.Printf("::warning title=API Retry::%s failed (attempt %d/%d), retrying in %v: %v\n",
-		operation, attempt+1, maxRetries+1, backoff.Round(time.Millisecond), err)
+	// No console output in JSON mode - retries are handled silently
+	// Consider adding retry information to the JSON output if needed
 }
 
 // PreCheckRateLimit checks rate limits before making requests

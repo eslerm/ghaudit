@@ -5,6 +5,7 @@ package org
 
 import (
 	"github.com/chainguard-dev/ghaudit/pkg/config"
+	"github.com/chainguard-dev/ghaudit/pkg/gherror"
 	"github.com/google/go-github/v75/github"
 	"github.com/spf13/cobra"
 )
@@ -21,14 +22,26 @@ func New(githubClient *github.Client) *cobra.Command {
 	}
 
 	var org string
-	var format string
 	cmd.PersistentFlags().StringVarP(&org, "organization", "o", "", "organization to perform audits on.")
-	cmd.PersistentFlags().StringVar(&format, "format", "github", "Output format: github (default), json, or text")
 
-	// Add format to context for all subcommands
+	// Always use JSON format and initialize result collector
 	cmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
-		ctx := config.WithFormat(cmd.Context(), format)
+		ctx := config.WithFormat(cmd.Context(), "json")
 		cmd.SetContext(ctx)
+		// Initialize global result collector for JSON output
+		gherror.InitGlobalResultSet("json")
+		return nil
+	}
+
+	// Output JSON results after command execution
+	cmd.PersistentPostRunE = func(cmd *cobra.Command, args []string) error {
+		// Skip for root command
+		if cmd.Name() == "org" {
+			return nil
+		}
+		if rs := gherror.GetGlobalResultSet(); rs != nil {
+			return rs.Output()
+		}
 		return nil
 	}
 

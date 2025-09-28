@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/chainguard-dev/ghaudit/pkg/config"
 	"github.com/chainguard-dev/ghaudit/pkg/gherror"
 	"github.com/google/go-github/v75/github"
 	"github.com/spf13/cobra"
@@ -40,9 +39,7 @@ func ActionsEnabled(ctx context.Context, githubClient *github.Client, org, repo 
 		if gherror.Is404(err) {
 			message := fmt.Sprintf("Actions disabled in %s/%s reduces attack surface", org, repo)
 			gherror.AddGlobalResult(gherror.Info("Actions status", org, repo, message))
-			if !config.GetErrorsOnly(ctx) {
-				fmt.Printf("::info title=Actions disabled (secure)::%s\n", message)
-			}
+			// No console output in JSON mode
 			return nil
 		}
 		gherror.AddGlobalResult(gherror.ErrorResult("Actions status", org, repo, gherror.WrapAPIError(err, "fetching actions permissions", org, repo)))
@@ -53,9 +50,7 @@ func ActionsEnabled(ctx context.Context, githubClient *github.Client, org, repo 
 	if !actionsPerms.GetEnabled() {
 		message := fmt.Sprintf("Actions disabled in %s/%s reduces attack surface", org, repo)
 		gherror.AddGlobalResult(gherror.Info("Actions status", org, repo, message))
-		if gherror.ShouldEmitGitHub() && !config.GetErrorsOnly(ctx) {
-			fmt.Printf("::info title=Actions disabled (secure)::%s\n", message)
-		}
+		// No console output in JSON mode
 	} else {
 		result := gherror.Pass("Actions status", org, repo)
 		result.Value = "enabled"
