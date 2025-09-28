@@ -201,11 +201,3 @@ func PreCheckRateLimit(ctx context.Context, client *github.Client) error {
 	return nil
 }
 
-// GetRequestID extracts the GitHub request ID from an error for support
-func GetRequestID(err error) string {
-	var ghErr *github.ErrorResponse
-	if errors.As(err, &ghErr) && ghErr.Response != nil {
-		return ghErr.Response.Header.Get("X-GitHub-Request-Id")
-	}
-	return ""
-}

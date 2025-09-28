@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"sync"
+	"sync/atomic"
 )
 
 // Status constants for Result.Status field
@@ -47,6 +48,7 @@ type ResultSet struct {
 
 var globalResultSet *ResultSet
 var globalMutex sync.Mutex
+var hadErrors = atomic.Bool{}
 
 // NewResultSet creates a new result collector
 func NewResultSet(format string) *ResultSet {
@@ -93,19 +95,6 @@ func GetGlobalResultSet() *ResultSet {
 	return globalResultSet
 }
 
-// IsJSONFormat checks if JSON output is requested
-func IsJSONFormat() bool {
-	globalMutex.Lock()
-	defer globalMutex.Unlock()
-	return globalResultSet != nil && globalResultSet.format == "json"
-}
-
-// ShouldEmitGitHub checks if GitHub format output should be emitted
-func ShouldEmitGitHub() bool {
-	globalMutex.Lock()
-	defer globalMutex.Unlock()
-	return globalResultSet == nil || globalResultSet.format == "github" || globalResultSet.format == ""
-}
 
 // Output writes all results in JSON format
 func (rs *ResultSet) Output() error {
@@ -159,6 +148,7 @@ func Skip(check string, org, repo string, reason string) Result {
 
 // ErrorResult creates an error result
 func ErrorResult(check string, org, repo string, err error) Result {
+	sawError()
 	return Result{
 		Check:  check,
 		Org:    org,
@@ -166,4 +156,13 @@ func ErrorResult(check string, org, repo string, err error) Result {
 		Status: StatusError,
 		Error:  err.Error(),
 	}
+}
+
+// HadErrors returns true if any errors have been emitted.
+func HadErrors() bool {
+	return hadErrors.Load()
+}
+
+func sawError() {
+	hadErrors.Store(true)
 }
