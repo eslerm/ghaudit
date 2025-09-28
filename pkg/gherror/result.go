@@ -95,7 +95,6 @@ func GetGlobalResultSet() *ResultSet {
 	return globalResultSet
 }
 
-
 // Output writes all results in JSON format
 func (resultSet *ResultSet) Output() error {
 	return resultSet.OutputJSON()

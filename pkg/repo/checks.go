@@ -383,7 +383,7 @@ func DefaultWorkflowPermissions(ctx context.Context, githubClient *github.Client
 	if permissions == "read" {
 		res := gherror.Pass("Default workflow permissions", org, repo)
 		res.Value = map[string]interface{}{
-			"permissions":                     permissions,
+			"permissions":                      permissions,
 			"can_approve_pull_request_reviews": canApprove,
 		}
 		gherror.AddGlobalResult(res)
@@ -391,7 +391,7 @@ func DefaultWorkflowPermissions(ctx context.Context, githubClient *github.Client
 		message := fmt.Sprintf("Default workflow permissions too broad in %s/%s: %s", org, repo, permissions)
 		res := gherror.Fail("Default workflow permissions", org, repo, "error", message)
 		res.Value = map[string]interface{}{
-			"permissions":                     permissions,
+			"permissions":                      permissions,
 			"can_approve_pull_request_reviews": canApprove,
 		}
 		gherror.AddGlobalResult(res)

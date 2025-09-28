@@ -23,7 +23,7 @@ func NewRepoMapper(name string, githubClient *github.Client, org string, repoFun
 		name:         name,
 		githubClient: githubClient,
 		org:          org,
-		repoFunc:           repoFunc,
+		repoFunc:     repoFunc,
 	}
 }
 
@@ -31,7 +31,7 @@ type repoMapper struct {
 	name         string
 	githubClient *github.Client
 	org          string
-	repoFunc           RepoFunc
+	repoFunc     RepoFunc
 }
 
 func (mapper *repoMapper) Execute(ctx context.Context) error {

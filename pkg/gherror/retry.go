@@ -200,4 +200,3 @@ func PreCheckRateLimit(ctx context.Context, client *github.Client) error {
 
 	return nil
 }
-
