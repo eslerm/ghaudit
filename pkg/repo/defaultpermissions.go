@@ -66,6 +66,9 @@ func DefaultWorkflowPermissions(ctx context.Context, githubClient *github.Client
 		if canApprove {
 			issues = append(issues, "can approve PRs")
 		}
+		// Note: issues variable is built but not currently used in the message
+		// Consider using it in future to provide more detailed feedback
+		_ = issues
 
 		message := fmt.Sprintf("Elevated permissions in %s/%s", org, repo)
 		result := gherror.Fail("Workflow permissions", org, repo, "error", message)

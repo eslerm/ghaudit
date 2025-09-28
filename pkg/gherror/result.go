@@ -108,36 +108,6 @@ func (rs *ResultSet) Output() error {
 	}
 }
 
-// emitGitHub outputs a single result in GitHub Actions format
-func (rs *ResultSet) emitGitHub(r Result) {
-	// Skip successful and skipped checks unless they have info messages
-	if (r.Status == "pass" || r.Status == "skip") && r.Severity != "info" {
-		return
-	}
-
-	// Map severity to GitHub Actions annotation level
-	var prefix string
-	switch r.Severity {
-	case "error":
-		prefix = "::error"
-		sawError() // Track that we had an error
-	case "warning":
-		prefix = "::warning"
-	case "info":
-		prefix = "::notice"
-	default:
-		prefix = "::notice"
-	}
-
-	// Build the annotation
-	annotation := prefix
-	if r.Check != "" {
-		annotation += fmt.Sprintf(" title=%s", r.Check)
-	}
-	annotation += "::" + r.Message
-
-	fmt.Fprintln(rs.writer, annotation)
-}
 
 // outputText writes results in human-readable text format
 func (rs *ResultSet) outputText() error {

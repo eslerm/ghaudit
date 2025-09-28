@@ -68,6 +68,14 @@ func (f RoundTripperFunc) RoundTrip(r *http.Request) (*http.Response, error) {
 	return f(r)
 }
 
+// contextKey is a custom type for context keys to avoid collisions
+type contextKey string
+
+const (
+	// GitHubRequestIDKey is the context key for GitHub request ID
+	GitHubRequestIDKey contextKey = "github-request-id"
+)
+
 // WithRequestID adds request tracking for debugging
 func WithRequestID(transport http.RoundTripper) http.RoundTripper {
 	return RoundTripperFunc(func(req *http.Request) (*http.Response, error) {
@@ -80,8 +88,9 @@ func WithRequestID(transport http.RoundTripper) http.RoundTripper {
 
 		// Log request ID from response for correlation
 		if resp != nil && resp.Header.Get("X-GitHub-Request-Id") != "" {
-			// This could be logged or stored for debugging
-			req = req.WithContext(context.WithValue(req.Context(), "github-request-id", resp.Header.Get("X-GitHub-Request-Id")))
+			// Store the GitHub request ID in context for potential debugging
+			// Note: This context is not propagated back since req is not returned
+			_ = context.WithValue(req.Context(), GitHubRequestIDKey, resp.Header.Get("X-GitHub-Request-Id"))
 		}
 
 		return resp, err

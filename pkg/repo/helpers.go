@@ -71,9 +71,3 @@ func checkSecurityFeature(
 	}
 }
 
-// checkBooleanSetting checks if a boolean setting matches expected value
-func checkBooleanSetting(value bool, expected bool, err gherror.Error, msgFormat string, args ...interface{}) {
-	if value != expected {
-		err.Emit(msgFormat, args...)
-	}
-}

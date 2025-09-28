@@ -136,7 +136,10 @@ func runChecks(ctx context.Context, githubClient *github.Client, orgName string,
 	case err := <-errChan:
 		// Output results even on error for JSON/text formats
 		if rs := gherror.GetGlobalResultSet(); rs != nil && (format == "json" || format == "text") {
-			rs.Output()
+			if outputErr := rs.Output(); outputErr != nil {
+				// Log output error but still return original error
+				fmt.Printf("::warning::Failed to output results: %v\n", outputErr)
+			}
 		}
 		return err
 	default:
