@@ -169,6 +169,7 @@ func calculateBackoff(err error, attempt int, config RetryConfig) time.Duration 
 // addJitter adds random jitter to prevent thundering herd
 func addJitter(duration time.Duration) time.Duration {
 	// Add 0-20% jitter
+	// #nosec G404 -- math/rand is acceptable for jitter calculation (non-cryptographic use)
 	jitter := time.Duration(rand.Float64() * 0.2 * float64(duration))
 	return duration + jitter
 }
