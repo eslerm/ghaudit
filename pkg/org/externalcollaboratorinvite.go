@@ -12,14 +12,14 @@ import (
 	"github.com/chainguard-dev/ghaudit/pkg/gherror"
 )
 
-func externalCollaboratorInvite(githubClient *github.Client, org string) *cobra.Command {
+func externalCollaboratorInvite(githubClient *github.Client, orgPtr *string) *cobra.Command {
 	return &cobra.Command{
 		Use:           "external-collaborator-invite",
 		Short:         "Audit if members can invite outside collaborators.",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return ExternalCollaboratorInvite(cmd.Context(), githubClient, org)
+			return ExternalCollaboratorInvite(cmd.Context(), githubClient, *orgPtr)
 		},
 	}
 }

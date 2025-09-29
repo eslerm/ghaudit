@@ -12,14 +12,14 @@ import (
 	"github.com/chainguard-dev/ghaudit/pkg/gherror"
 )
 
-func twoFactor(githubClient *github.Client, org string) *cobra.Command {
+func twoFactor(githubClient *github.Client, orgPtr *string) *cobra.Command {
 	return &cobra.Command{
 		Use:           "two-factor",
 		Short:         "Audit two-factor authentication requirement.",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return TwoFactor(cmd.Context(), githubClient, org)
+			return TwoFactor(cmd.Context(), githubClient, *orgPtr)
 		},
 	}
 }

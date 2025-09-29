@@ -12,14 +12,14 @@ import (
 	"github.com/chainguard-dev/ghaudit/pkg/gherror"
 )
 
-func memberRepoCreation(githubClient *github.Client, org string) *cobra.Command {
+func memberRepoCreation(githubClient *github.Client, orgPtr *string) *cobra.Command {
 	return &cobra.Command{
 		Use:           "member-repo-creation",
 		Short:         "Audit if members can create repositories.",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return MemberRepoCreation(cmd.Context(), githubClient, org)
+			return MemberRepoCreation(cmd.Context(), githubClient, *orgPtr)
 		},
 	}
 }

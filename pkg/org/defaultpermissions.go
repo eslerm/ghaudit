@@ -10,15 +10,14 @@ import (
 	"github.com/chainguard-dev/ghaudit/pkg/repo"
 )
 
-func defaultPermissions(githubClient *github.Client, org string) *cobra.Command {
-	repoMapper := NewRepoMapper("default-permissions", githubClient, org, repo.DefaultWorkflowPermissions)
-
+func defaultPermissions(githubClient *github.Client, orgPtr *string) *cobra.Command {
 	return &cobra.Command{
 		Use:           "default-permissions",
 		Short:         "Audit the default permissions.",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			repoMapper := NewRepoMapper("default-permissions", githubClient, *orgPtr, repo.DefaultWorkflowPermissions)
 			return repoMapper.Execute(cmd.Context())
 		},
 	}

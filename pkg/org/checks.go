@@ -53,11 +53,10 @@ var securityAudits = []SecurityAudit{
 }
 
 // createSecurityCommand creates a cobra command for an org-wide security audit
-func createSecurityCommand(githubClient *github.Client, org string, audit SecurityAudit) *cobra.Command {
+func createSecurityCommand(githubClient *github.Client, orgPtr *string, audit SecurityAudit) *cobra.Command {
 	checkFunction := func(ctx context.Context, githubClient *github.Client, org, repoName string) error {
 		return audit.CheckFunc(ctx, githubClient, org, repoName, nil)
 	}
-	repoMapper := NewRepoMapper(audit.CommandUse, githubClient, org, checkFunction)
 
 	return &cobra.Command{
 		Use:           audit.CommandUse,
@@ -65,6 +64,7 @@ func createSecurityCommand(githubClient *github.Client, org string, audit Securi
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			repoMapper := NewRepoMapper(audit.CommandUse, githubClient, *orgPtr, checkFunction)
 			return repoMapper.Execute(cmd.Context())
 		},
 	}

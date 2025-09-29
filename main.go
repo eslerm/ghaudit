@@ -40,11 +40,11 @@ func New(githubClient *github.Client) *cobra.Command {
 func main() {
 	ctx := context.Background()
 
-	token, ok := os.LookupEnv("GITHUB_TOKEN")
-	if !ok {
-		token, ok = os.LookupEnv("GH_TOKEN")
-		if !ok {
-			log.Fatal("GITHUB_TOKEN or GH_TOKEN must be set")
+	token := os.Getenv("GITHUB_TOKEN")
+	if token == "" {
+		token = os.Getenv("GH_TOKEN")
+		if token == "" {
+			log.Fatal("GITHUB_TOKEN or GH_TOKEN must be set to a non-empty value")
 		}
 	}
 
